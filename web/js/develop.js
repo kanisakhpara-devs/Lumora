@@ -305,12 +305,12 @@ const Dev = {
   /* ---- control registry: every slider knows its settings path so the UI can be refreshed from state */
   slider(key, label, min, max, step, opts = {}) {
     const def = getPath(DEFAULTS, key) ?? opts.def ?? 0;
-    const el = UI.slider({ label, min, max, step, value: def, def, cls: opts.cls, oninput: v => { setPath(this.s, key, v); opts.live && opts.live(v); this.render(); }, onchange: v => { opts.done && opts.done(v); this.commit(label + ' ' + (v > 0 && min < 0 ? '+' : '') + (+v).toFixed(step < 1 ? 2 : 0)); } });
+    const el = UI.slider({ label, min, max, step, value: def, def, cls: opts.cls, tip: TIPS.key[key], oninput: v => { setPath(this.s, key, v); opts.live && opts.live(v); this.render(); }, onchange: v => { opts.done && opts.done(v); this.commit(label + ' ' + (v > 0 && min < 0 ? '+' : '') + (+v).toFixed(step < 1 ? 2 : 0)); } });
     this.controls.push([key, el]);
     return el;
   },
   syncUI() { for (const [k, el] of this.controls) el.set(getPath(this.s, k) ?? 0); for (const f of this.refreshers) f(); Tools.panel(); },
-  section(label) { return h('div', { class: 'sub' }, label); },
+  section(label) { return h('div', { class: 'sub', data: TIPS.section[label] ? { tip: TIPS.section[label] } : null }, label); },
 
   buildLeft() {
     const L = this.el.left;
@@ -365,7 +365,7 @@ const Dev = {
     this.proofB = h('div'); this.proofPanel = UI.panel('Soft Proofing', this.proofB, { key: 'dproof' }); this.proofPanel.style.display = 'none';
     this.toolB = h('div', { class: 'tool-panel' });
     const strip = h('div', { class: 'tool-strip' }, [['crop', '⧉ Crop', 'Crop & Straighten (R)'], ['spot', '◎ Heal', 'Spot Removal: Clone, Heal, Content-Aware Remove (Q)'], ['redeye', '◉ Red Eye', 'Red Eye Correction'], ['mask', '◐ Masking', 'Masking: Brush (K), Linear Gradient (M), Radial Gradient (Shift+M)']]
-      .map(([t, l, tip]) => h('button', { class: 'tbtn' + (t === 'redeye' || t === 'mask' ? ' adv' : ''), data: { tool: t }, title: tip, onclick: () => Tools.set(this.tool === t ? null : t) }, l)));
+      .map(([t, l, tip]) => h('button', { class: 'tbtn' + (t === 'redeye' || t === 'mask' ? ' adv' : ''), data: { tool: t, tip: TIPS.tool[t][1], tipName: TIPS.tool[t][0] }, onclick: () => Tools.set(this.tool === t ? null : t) }, l)));
     this.strip = strip;
     // ---- basic
     const treat = h('span', { class: 'seg' }, [['color', 'Color'], ['bw', 'Black & White']].map(([v, l]) => h('a', { data: { v }, onclick: () => { this.s.treatment = v; this.syncUI(); this.render(); this.commit('Treatment: ' + l); } }, l)));
@@ -383,7 +383,7 @@ const Dev = {
     const basic = h('div', {}, h('div', { class: 'frow adv' }, h('span', {}, 'Treatment'), treat), h('label', { class: 'frow adv' }, h('span', {}, 'Profile'), profSel),
       h('div', { class: 'frow' }, h('span', {}, 'WB'), h('span', { class: 'fpick' }, wbSel, h('button', { class: 'btn', title: 'White Balance Selector (W): click something neutral', onclick: () => Tools.set(this.tool === 'wb' ? null : 'wb') }, '✎'))),
       S('temp', 'Temp', -100, 100, 1, { cls: 'g-temp', live: wbCustom }), S('tint', 'Tint', -100, 100, 1, { cls: 'g-tint', live: wbCustom }),
-      h('div', { class: 'sub row' }, 'Tone', h('button', { class: 'btn', onclick: () => { if (!this.src) return; const t = this.toneFromHist(GLR.histogram(this.src, this.before())); gl_restore(); Object.assign(this.s, t); this.syncUI(); this.render(); this.commit('Auto Tone'); } }, 'Auto')),
+      h('div', { class: 'sub row', data: { tip: TIPS.section.Tone, tipName: 'Tone' } }, 'Tone', h('button', { class: 'btn', onclick: () => { if (!this.src) return; const t = this.toneFromHist(GLR.histogram(this.src, this.before())); gl_restore(); Object.assign(this.s, t); this.syncUI(); this.render(); this.commit('Auto Tone'); } }, 'Auto')),
       S('exposure', 'Exposure', -5, 5, 0.01), S('contrast', 'Contrast', -100, 100, 1), S('highlights', 'Highlights', -100, 100, 1), S('shadows', 'Shadows', -100, 100, 1), S('whites', 'Whites', -100, 100, 1), S('blacks', 'Blacks', -100, 100, 1),
       sec('Presence'), S('texture', 'Texture', -100, 100, 1), S('clarity', 'Clarity', -100, 100, 1), S('dehaze', 'Dehaze', -100, 100, 1), S('vibrance', 'Vibrance', -100, 100, 1), S('saturation', 'Saturation', -100, 100, 1));
     // ---- tone curve
@@ -396,7 +396,7 @@ const Dev = {
       const tabs = bw ? [['bw', 'B&W Mix']] : [['hue', 'Hue'], ['sat', 'Saturation'], ['lum', 'Luminance'], ['all', 'All']];
       if (bw) hslTab = 'bw'; else if (hslTab === 'bw') hslTab = 'hue';
       hslTabs.replaceChildren(...tabs.map(([k, l]) => h('a', { class: hslTab === k ? 'on' : '', onclick: () => { hslTab = k; hslDraw(); } }, l)));
-      const group = part => HSL_BANDS.map((n, i) => { const key = part === 'bw' ? 'bwMix.' + i : `hsl.${part}.${i}`; return UI.slider({ label: n, min: -100, max: 100, step: 1, value: getPath(this.s, key), def: 0, cls: 'hsl-' + i, oninput: v => { setPath(this.s, key, v); this.render(); }, onchange: v => this.commit(`${part === 'bw' ? 'B&W' : part} ${n} ${v}`) }); });
+      const group = part => HSL_BANDS.map((n, i) => { const key = part === 'bw' ? 'bwMix.' + i : `hsl.${part}.${i}`; return UI.slider({ label: n, min: -100, max: 100, step: 1, value: getPath(this.s, key), def: 0, cls: 'hsl-' + i, tip: TIPS.hsl[part](n), oninput: v => { setPath(this.s, key, v); this.render(); }, onchange: v => this.commit(`${part === 'bw' ? 'B&W' : part} ${n} ${v}`) }); });
       hslB.replaceChildren(...(hslTab === 'all' ? [sec('Hue'), ...group('hue'), sec('Saturation'), ...group('sat'), sec('Luminance'), ...group('lum')] : group(hslTab)));
     };
     // ---- color grading

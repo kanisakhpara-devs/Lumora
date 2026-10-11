@@ -122,13 +122,14 @@ const UI = {
     const key = 'panel_' + (opts.key || title);
     let open = localStorage[key] ? localStorage[key] === '1' : !opts.closed;
     const tools = h('span', { class: 'ph-tools', onclick: e => e.stopPropagation() }, opts.tools || []);
-    const head = h('div', { class: 'panel-h', onclick: () => { open = !open; localStorage[key] = open ? '1' : '0'; el.classList.toggle('closed', !open); } }, h('span', { class: 'tw' }), h('span', { class: 'pt' }, title), tools);
+    const head = h('div', { class: 'panel-h', onclick: () => { open = !open; localStorage[key] = open ? '1' : '0'; el.classList.toggle('closed', !open); } }, h('span', { class: 'tw' }), h('span', { class: 'pt', data: TIPS.panel[opts.key || title] ? { tip: TIPS.panel[opts.key || title] } : null }, title), tools);
     const el = h('div', { class: 'panel' + (open ? '' : ' closed') + (opts.cls ? ' ' + opts.cls : ''), data: { p: opts.key || title } }, head, h('div', { class: 'panel-b' }, body));
     el.body = el.lastChild;
     return el;
   },
   /* Labelled slider with numeric box. Double-click the label to reset. */
-  slider({ label, min = -100, max = 100, step = 1, value = 0, def = 0, oninput, onchange, cls }) {
+  slider({ label, min = -100, max = 100, step = 1, value = 0, def = 0, oninput, onchange, cls, tip }) {
+    tip = tip || TIPS.label[label];
     const digits = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(step) - 1e-9));
     const rng = h('input', { type: 'range', min, max, step, value });
     const num = h('input', { type: 'text', class: 'num', value: (+value).toFixed(digits) });
@@ -137,7 +138,7 @@ const UI = {
     rng.onchange = () => onchange && onchange(+rng.value);
     num.onchange = () => set(num.value, 'change');
     num.onkeydown = e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); set(+rng.value + (e.key === 'ArrowUp' ? 1 : -1) * step * (e.shiftKey ? 10 : 1), 'change'); } e.stopPropagation(); };
-    const el = h('div', { class: 'srow ' + (cls || '') }, h('label', { title: 'Double-click to reset', ondblclick: () => set(def, 'change') }, label), rng, num);
+    const el = h('div', { class: 'srow ' + (cls || '') }, h('label', { title: tip ? null : 'Double-click to reset', data: tip ? { tip, tipReset: 1 } : null, ondblclick: () => set(def, 'change') }, label), rng, num);
     el.set = v => set(v);
     el.get = () => +rng.value;
     return el;

@@ -164,7 +164,7 @@ const Panels = {
         const t = devFull(base); t[key] = v; p.develop = devDiff(t); p.ver++;
         if (Lib.view === 'grid') Render.thumb(p); else Lib.refreshView(true);
       }, 60);
-      return UI.slider({ label, min: -lim, max: lim, step: key === 'exposure' ? 0.01 : 1, value: now[key], def: 0,
+      return UI.slider({ label, min: -lim, max: lim, step: key === 'exposure' ? 0.01 : 1, value: now[key], def: 0, tip: TIPS.key[key],
         oninput: v => { const p = App.cur(); if (!p) return; if (!this.qdDrag) { this.qdDrag = true; base = clone(p.develop); } live(v); },
         onchange: async v => {   // commit: the same change is applied to every selected photo
           const p = App.cur(); if (!p) return;
