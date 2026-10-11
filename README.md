@@ -1,11 +1,11 @@
-# Lumora
+# Opia
 
 A local photo organizer and editor: Library, Develop, Map, Book, Slideshow, Print and Web modules.
 A Python engine handles the disk, catalogs, colour management and export; the interface renders every edit on the GPU (WebGL 2).
 
 ## Run it
 
-Double-click `Lumora.bat`, or:
+Double-click `Opia.bat`, or:
 
 ```bash
 python run.py
@@ -13,7 +13,7 @@ python run.py
 
 The app opens in its own window (Edge or Chrome in app mode). Closing the window stops the engine and, if one is due, backs up the catalog.
 
-Options: `--port N`, `--no-window` (open the printed URL yourself), `--catalog path\to\file.lumcat`, `--home folder`.
+Options: `--port N`, `--no-window` (open the printed URL yourself), `--catalog path\to\file.opiacat`, `--home folder`.
 
 Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread` (already installed on this machine).
 
@@ -21,11 +21,11 @@ Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread` (al
 
 | What | Where |
 | --- | --- |
-| Catalogs (`.lumcat`, SQLite) | `Pictures\Lumora\<Name>\<Name>.lumcat` |
-| Previews / Smart Previews | `<Name> Previews.lumdata`, `<Name> Smart Previews.lumdata` beside the catalog |
-| Backups | `Backups\<date>\<Name>.lumcat.zip` beside the catalog (or the folder set in Catalog Settings) |
-| Presets, preferences, recent catalogs | `Pictures\Lumora\config.json` |
-| Extra ICC profiles | `Pictures\Lumora\Profiles` |
+| Catalogs (`.opiacat`, SQLite) | `Pictures\Opia\<Name>\<Name>.opiacat` |
+| Previews / Smart Previews | `<Name> Previews.opiadata`, `<Name> Smart Previews.opiadata` beside the catalog |
+| Backups | `Backups\<date>\<Name>.opiacat.zip` beside the catalog (or the folder set in Catalog Settings) |
+| Presets, preferences, recent catalogs | `Pictures\Opia\config.json` |
+| Extra ICC profiles | `Pictures\Opia\Profiles` |
 | Plug-ins | `plugins\` here, plus any folders added in the Plug-in Manager |
 
 Your photos are never modified. Edits are stored in the catalog (and optionally in `.xmp` sidecars).
@@ -55,7 +55,7 @@ See `plugins\contact_sheet` and `plugins\export_manifest`.
 
 ## Honest limits
 
-- **`.lumcat` catalogs** are Lumora's own SQLite schema and cannot be opened by other photo applications. Catalogs made before the rename (`.lrcat`, `.lrdata`) are renamed automatically the first time they are opened.
+- **`.opiacat` catalogs** are Opia's own SQLite schema and cannot be opened by other photo applications. Catalogs from when the app was called Lumora (`.lumcat` or `.lrcat`, with `.lumdata` or `.lrdata` previews) are renamed automatically the first time they are opened, and the `Pictures\Lumora` folder becomes `Pictures\Opia`.
 - **Editing is 8-bit sRGB.** RAW files are decoded through LibRaw to 8-bit before editing, so there is less highlight/shadow latitude than a true raw pipeline.
 - **Smart Previews** are 2560 px JPEGs (not lossy DNG). They keep photos editable while the originals are offline.
 - **Tethering** is a watched folder (point your camera maker's utility at it) plus direct capture from any camera Windows exposes as a webcam. There is no direct USB camera control.

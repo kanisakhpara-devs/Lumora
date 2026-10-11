@@ -77,7 +77,7 @@ def load_all():
             info['enabled'] = pid not in disabled
             if info['enabled']:
                 entry = os.path.join(d, man.get('entry', 'plugin.py'))
-                spec = importlib.util.spec_from_file_location('lumora_plugin_' + pid.replace('.', '_').replace('-', '_'), entry)
+                spec = importlib.util.spec_from_file_location('opia_plugin_' + pid.replace('.', '_').replace('-', '_'), entry)
                 mod = importlib.util.module_from_spec(spec)
                 if d not in sys.path:
                     sys.path.append(d)

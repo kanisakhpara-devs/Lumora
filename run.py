@@ -1,4 +1,4 @@
-"""Lumora launcher: starts the local engine and opens the app in its own window (falling back to Edge/Chrome app mode, then the default browser)."""
+"""Opia launcher: starts the local engine and opens the app in its own window (falling back to Edge/Chrome app mode, then the default browser)."""
 import argparse
 import os
 import shutil
@@ -22,7 +22,7 @@ def find_browser():
 
 
 def native_window(url, home):
-    """Show the UI in Lumora's own window (Windows' built-in WebView2), blocking until it is closed. False if that is not available."""
+    """Show the UI in Opia's own window (Windows' built-in WebView2), blocking until it is closed. False if that is not available."""
     try:
         import webview
     except ImportError:
@@ -32,20 +32,20 @@ def native_window(url, home):
         pyi_splash.close()
     except Exception:
         pass
-    webview.create_window('Lumora', url, width=1500, height=950, min_size=(900, 600), background_color='#0f0f10')
+    webview.create_window('Opia', url, width=1500, height=950, min_size=(900, 600), background_color='#0f0f10')
     webview.start(private_mode=False, storage_path=os.path.join(home, '.app'))
     return True
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Lumora photo editor')
+    ap = argparse.ArgumentParser(description='Opia photo editor')
     ap.add_argument('--port', type=int, default=0, help='port to serve on (default: any free port)')
     ap.add_argument('--no-window', action='store_true', help='only run the engine; open the URL yourself')
-    ap.add_argument('--catalog', help='open this .lumcat instead of the most recent one')
-    ap.add_argument('--home', help='folder for catalogs and settings (default: Pictures/Lumora)')
+    ap.add_argument('--catalog', help='open this .opiacat instead of the most recent one')
+    ap.add_argument('--home', help='folder for catalogs and settings (default: Pictures/Opia)')
     args = ap.parse_args()
     if args.home:
-        os.environ['LUMORA_HOME'] = os.path.abspath(args.home)
+        os.environ['OPIA_HOME'] = os.path.abspath(args.home)
     from server import app, core      # imported late so --home takes effect
 
     httpd = app.serve(args.port)
@@ -53,7 +53,7 @@ def main():
         from server import catalog
         catalog.open_catalog(args.catalog)
     url = 'http://127.0.0.1:%d/' % httpd.server_port
-    print('Lumora is running at', url, flush=True)
+    print('Opia is running at', url, flush=True)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
 
     try:
@@ -69,7 +69,7 @@ def main():
             proc.wait()      # the engine lives exactly as long as the window
         else:
             webbrowser.open(url)
-            print('Close this console window to quit Lumora.')
+            print('Close this console window to quit Opia.')
             threading.Event().wait()
     except KeyboardInterrupt:
         pass

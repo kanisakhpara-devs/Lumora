@@ -332,7 +332,7 @@ const Dev = {
         isUser ? { label: 'Update with Current Settings', run: () => this.createPreset(n) } : null, isUser ? { label: 'Rename…', run: async () => { const nn = await UI.prompt('Rename Preset', 'Name', n); if (nn && nn !== n) { const u = { ...user }; u[nn] = u[n]; delete u[n]; App.setConf('develop_presets', u); this.drawPresets(); } } } : null,
         isUser ? { label: 'Delete', run: () => { const u = { ...user }; delete u[n]; App.setConf('develop_presets', u); this.drawPresets(); } } : null]); } }, h('span', { class: 'tw none' }), h('span', { class: 'tl' }, n + (def === n ? '  • on import' : '')));
     this.presetB.replaceChildren(h('div', { class: 'sub' }, 'User Presets'), ...(Object.keys(user).length ? Object.entries(user).map(([n, s]) => row(n, s, true)) : [h('div', { class: 'empty small' }, 'Click + to save your settings as a preset.')]),
-      h('div', { class: 'sub' }, 'Lumora Presets'), ...Object.entries(BUILTIN_PRESETS).map(([n, s]) => row(n, s, false)));
+      h('div', { class: 'sub' }, 'Opia Presets'), ...Object.entries(BUILTIN_PRESETS).map(([n, s]) => row(n, s, false)));
   },
   async createPreset(update) {
     if (!this.photo) return;

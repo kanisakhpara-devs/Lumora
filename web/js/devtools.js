@@ -16,8 +16,8 @@ const Tools = {
     ov.addEventListener('mousemove', e => { if (['spot', 'mask', 'redeye'].includes(Dev.tool)) { const b = ov.getBoundingClientRect(); this.cursor = [(e.clientX - b.left) * devicePixelRatio, (e.clientY - b.top) * devicePixelRatio]; this.redraw(); } });
     ov.addEventListener('mouseleave', () => { this.cursor = null; this.redraw(); });
     ov.addEventListener('wheel', e => { e.preventDefault(); const at = Dev.at(e), vp = Dev.after(); if (!vp) return; if (Modes.trackpad) return Dev.gesture(e, at, vp); const cur = vp.rect.scale, z = e.deltaY < 0 ? cur * 1.25 : cur / 1.25; Dev.setZoom(z <= vp.rect.fit * 1.02 ? 'fit' : Math.min(z, 8), at); }, { passive: false });
-    ov.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/lumora-photos')) e.preventDefault(); });
-    ov.addEventListener('drop', e => { const d = e.dataTransfer.getData('text/lumora-photos'); if (d && Dev.mode === 'reference') { Dev.refPhoto = JSON.parse(d)[0]; Dev.refSrc = null; Dev.render(); } });
+    ov.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/opia-photos')) e.preventDefault(); });
+    ov.addEventListener('drop', e => { const d = e.dataTransfer.getData('text/opia-photos'); if (d && Dev.mode === 'reference') { Dev.refPhoto = JSON.parse(d)[0]; Dev.refSrc = null; Dev.render(); } });
   },
   redraw() { if (Dev.vps && this.ov.width) this.drawOverlay(this.ov.getContext('2d'), this.ov.width, this.ov.height); },
   drag(move, up) { const m = e => move(e), u = e => { removeEventListener('mousemove', m); removeEventListener('mouseup', u); up && up(e); }; addEventListener('mousemove', m); addEventListener('mouseup', u); },

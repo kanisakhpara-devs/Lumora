@@ -28,7 +28,7 @@ def boot():
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
-    server_version = 'Lumora'
+    server_version = 'Opia'
 
     def log_message(self, fmt, *args):
         pass

@@ -41,7 +41,7 @@ const KEYWORD_SETS = { 'Outdoor Photography': ['Landscape', 'Macro', 'Flowers & 
   'Portrait Photography': ['Portrait', 'Candid', 'Family', 'Children', 'Group', 'Studio', 'Outdoor', 'Black & White', 'Headshot'],
   'Wedding Photography': ['Bride', 'Groom', 'Wedding Party', 'Family & Friends', 'Reception', 'Ceremony', 'Candid', 'Pre-wedding', 'Details'] };
 
-const dropPhotos = (el, fn) => { el.ondragover = e => { if (e.dataTransfer.types.includes('text/lumora-photos')) { e.preventDefault(); el.classList.add('drop'); } }; el.ondragleave = () => el.classList.remove('drop'); el.ondrop = e => { el.classList.remove('drop'); const d = e.dataTransfer.getData('text/lumora-photos'); if (d) { e.preventDefault(); fn(JSON.parse(d)); } }; return el; };
+const dropPhotos = (el, fn) => { el.ondragover = e => { if (e.dataTransfer.types.includes('text/opia-photos')) { e.preventDefault(); el.classList.add('drop'); } }; el.ondragleave = () => el.classList.remove('drop'); el.ondrop = e => { el.classList.remove('drop'); const d = e.dataTransfer.getData('text/opia-photos'); if (d) { e.preventDefault(); fn(JSON.parse(d)); } }; return el; };
 const srcIs = s => same(App.source, s);
 
 const Panels = {
@@ -135,8 +135,8 @@ const Panels = {
         title: c.type === 'smart' ? 'Smart Collection (rules)' : isSet ? 'Collection Set' : c.id === target ? 'Target Collection (press B to add photos)' : 'Collection', onclick: () => App.setSource(src), oncontext: e => UI.menu(e.clientX, e.clientY, Collections.menu(c)) });
       if (isSet) el.querySelector('.tw').onclick = e => { e.stopPropagation(); toggle(); };
       if (c.type === 'collection') dropPhotos(el, ids => App.collectionToggle(c.id, ids, true));
-      el.draggable = true; el.ondragstart = e => e.dataTransfer.setData('text/lumora-col', String(c.id));
-      if (isSet) { el.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/lumora-col')) { e.preventDefault(); el.classList.add('drop'); } }); el.addEventListener('drop', e => { const id = +e.dataTransfer.getData('text/lumora-col'); if (id && id !== c.id) Collections.move(id, c.id); }); }
+      el.draggable = true; el.ondragstart = e => e.dataTransfer.setData('text/opia-col', String(c.id));
+      if (isSet) { el.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/opia-col')) { e.preventDefault(); el.classList.add('drop'); } }); el.addEventListener('drop', e => { const id = +e.dataTransfer.getData('text/opia-col'); if (id && id !== c.id) Collections.move(id, c.id); }); }
       if (c.type === 'smart') el.ondblclick = () => Collections.editSmart(c);
       out.push(el);
       if (isSet && open) kids(c.id).forEach(k => walk(k, depth + 1));
@@ -381,10 +381,10 @@ const Keywords = {
           k.parent_id ? { label: 'Move to Top Level', run: () => this.move(k.id, null) } : null, '-', { label: 'Delete…', run: () => this.remove(k) }]) });
       el2.firstChild.after(box);
       if (kids.length) el2.querySelector('.tw').onclick = e => { e.stopPropagation(); toggle(); };
-      el2.draggable = true; el2.ondragstart = e => e.dataTransfer.setData('text/lumora-kw', String(k.id));
+      el2.draggable = true; el2.ondragstart = e => e.dataTransfer.setData('text/opia-kw', String(k.id));
       dropPhotos(el2, ids => App.assignKeywords(ids, [k.id]));
-      el2.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/lumora-kw')) { e.preventDefault(); el2.classList.add('drop'); } });
-      el2.addEventListener('drop', e => { const id = +e.dataTransfer.getData('text/lumora-kw'); if (id && id !== k.id) this.move(id, k.id); });
+      el2.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/opia-kw')) { e.preventDefault(); el2.classList.add('drop'); } });
+      el2.addEventListener('drop', e => { const id = +e.dataTransfer.getData('text/opia-kw'); if (id && id !== k.id) this.move(id, k.id); });
       out.push(el2);
       if (open) kids.forEach(c => walk(c, depth + 1));
     };

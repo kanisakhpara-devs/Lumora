@@ -41,10 +41,10 @@ def session_begin(settings=None, staging=True):
     st = settings or {}
     sid = uuid.uuid4().hex[:12]
     if staging or st.get('dest') in ('ftp', 'disc'):
-        folder = tempfile.mkdtemp(prefix='lumora_')
+        folder = tempfile.mkdtemp(prefix='opia_')
         staged = True
     else:
-        folder = st.get('folder') or os.path.join(os.path.expanduser('~'), 'Pictures', 'Lumora Exports')
+        folder = st.get('folder') or os.path.join(os.path.expanduser('~'), 'Pictures', 'Opia Exports')
         if st.get('subfolder'):
             folder = os.path.join(folder, files.ILLEGAL.sub('_', st['subfolder']))
         os.makedirs(folder, exist_ok=True)
@@ -79,7 +79,7 @@ def _exif_bytes(row, photo, mode, remove_location):
             ex = Image.Exif()
     for tag in (0x0112, 0x0201, 0x0202, 0x0103, 0x0111, 0x0117, 0x0100, 0x0101, 0x0102, 0x0106, 0x0115, 0x011C, 0x8773):
         ex.pop(tag, None)
-    ex[0x0131] = 'Lumora ' + core.VERSION
+    ex[0x0131] = 'Opia ' + core.VERSION
     iptc = photo.get('iptc') or {}
     if iptc.get('creator'):
         ex[0x013B] = iptc['creator']
@@ -304,7 +304,7 @@ for ($i=0; $i -lt $dm.Count; $i++) {
   $media = 'none'; $free = 0
   try {
     $fmt = New-Object -ComObject IMAPI2.MsftDiscFormat2Data
-    $fmt.Recorder = $rec; $fmt.ClientName = 'Lumora'
+    $fmt.Recorder = $rec; $fmt.ClientName = 'Opia'
     if ($fmt.IsCurrentMediaSupported($rec)) { $media = 'writable'; $free = [int64]$fmt.FreeSectorsOnMedia * 2048 }
   } catch { $media = 'none' }
   $out += [pscustomobject]@{ index=$i; name=("$($rec.VendorId) $($rec.ProductId)").Trim(); drive=(@($rec.VolumePathNames) -join ','); media=$media; free=$free }
@@ -319,7 +319,7 @@ if ($dm.Count -eq 0) { throw 'No disc recorder is connected to this computer.' }
 $rec = New-Object -ComObject IMAPI2.MsftDiscRecorder2
 $rec.InitializeDiscRecorder($dm.Item($Index))
 $fmt = New-Object -ComObject IMAPI2.MsftDiscFormat2Data
-$fmt.Recorder = $rec; $fmt.ClientName = 'Lumora'
+$fmt.Recorder = $rec; $fmt.ClientName = 'Opia'
 if (-not $fmt.IsCurrentMediaSupported($rec)) { throw 'Insert a blank writable CD or DVD and try again.' }
 $fs = New-Object -ComObject IMAPI2FS.MsftFileSystemImage
 $fs.ChooseImageDefaults($rec); $fs.VolumeName = $Label
@@ -334,7 +334,7 @@ $ErrorActionPreference='Stop'
 $cp = New-Object System.CodeDom.Compiler.CompilerParameters
 $cp.CompilerOptions = '/unsafe'
 Add-Type -CompilerParameters $cp -TypeDefinition @'
-public class LumoraIso {
+public class OpiaIso {
   public unsafe static void Save(string path, object stream, int blockSize, int totalBlocks) {
     int bytes = 0; byte[] buf = new byte[blockSize];
     System.IntPtr ptr = (System.IntPtr)(&bytes);
@@ -350,7 +350,7 @@ $fs.FileSystemsToCreate = 3    # ISO9660 + Joliet
 $fs.VolumeName = $Label
 $fs.Root.AddTree($Folder, $false)
 $res = $fs.CreateResultImage()
-[LumoraIso]::Save($Out, $res.ImageStream, $res.BlockSize, $res.TotalBlocks)
+[OpiaIso]::Save($Out, $res.ImageStream, $res.BlockSize, $res.TotalBlocks)
 'ISO'
 '''
 
@@ -358,7 +358,7 @@ $res = $fs.CreateResultImage()
 def _ps(script, *args, timeout=3600):
     if sys.platform != 'win32':
         raise ApiError('Disc burning uses the Windows IMAPI service')
-    path = os.path.join(tempfile.gettempdir(), 'lumora_%s.ps1' % uuid.uuid4().hex[:8])
+    path = os.path.join(tempfile.gettempdir(), 'opia_%s.ps1' % uuid.uuid4().hex[:8])
     with open(path, 'w', encoding='utf-8-sig') as f:
         f.write(script)
     try:
@@ -383,7 +383,7 @@ def disc_info():
 
 
 def disc_label(text):
-    return ''.join(ch for ch in (text or 'LUMORA') if ch.isalnum() or ch in ' _-')[:30] or 'LUMORA'
+    return ''.join(ch for ch in (text or 'OPIA') if ch.isalnum() or ch in ' _-')[:30] or 'OPIA'
 
 
 # ---------------------------------------------------------------- finishing

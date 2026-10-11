@@ -1,11 +1,11 @@
 'use strict';
-/* First-run tour. The logo leaves the top bar: on every step its ball rolls over to the next feature,
+/* First-run tour. The logo leaves the top bar: on every step its blue dot rolls over to the next feature,
    the rest of the logo tumbles after it, and a card opens beside it. Skippable at any point; replay from Help. */
 
 const Tour = {
   S: 44, root: null, i: 0, run: 0, busy: false,
   steps: [
-    { title: 'Welcome to Lumora', text: 'A one-minute tour of where everything lives. Just follow the little gold ball.' },
+    { title: 'Welcome to Opia', text: 'A one-minute tour of where everything lives. Just follow the little blue dot.' },
     { sel: '#modpick', at: 'below', title: 'Seven modules', text: 'Library organises and Develop edits. Map, Book, Slideshow, Print and Web turn your photos into something to share. Switch here, or press Ctrl+Alt+1 to 7.' },
     { sel: '#mod-library .side.left', at: 'right', title: 'Your sources', text: 'Catalog, Folders and Collections decide which photos you are looking at. Open Local Disk to add a folder, or use File > Import Photos.' },
     { sel: '#lib-views', at: 'inside', title: 'The grid', text: 'Every photo in the current source. Press 1 to 5 to rate, P to flag a pick and X to reject. G and E switch between Grid and Loupe.' },
@@ -44,7 +44,7 @@ const Tour = {
   home() { const r = $('#brand').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, s: r.width / this.S }; },
   tf(p, rot = 0) { return `translate(${p.x}px,${p.y}px) rotate(${rot}deg) scale(${p.s})`; },
   /* where the ball sits when it is docked in a logo at p, and how small it is there */
-  dock(p) { const u = this.S * p.s / 64; return { x: p.x + 22 * u, y: p.y - 5 * u, k: 5.6 * u / 14 }; },
+  dock(p) { const u = this.S * p.s / 64; return { x: p.x + 3.84 * u, y: p.y - 3.84 * u, k: 8.96 * u / 14 }; },
   ballTf(x, y, k, rot = 0) { return `translate(${x - 7}px,${y - 7}px) rotate(${rot}deg) scale(${k})`; },
 
   fill(st) {

@@ -458,7 +458,7 @@ const App = {
     this.colPhotos = new Map(Object.entries(d.collection_photos).map(([k, v]) => [+k, v]));
     this.people = d.people; this.faces = d.faces;
     this.source = { type: 'all' }; this.selection.clear(); this.active = null; this.expanded.clear();
-    document.title = this.info.name + ' — Lumora';
+    document.title = this.info.name + ' — Opia';
     this.emit('catalog');
     this.refreshList();
   },

@@ -47,11 +47,11 @@ function registerCommands() {
     UI.dialog({ title: 'Keyboard Shortcuts', width: 560, body: h('div', { class: 'scroll' }, h('table', { class: 'tbl' }, ...extra, ...rows)) }); });
   C('mode.beginner', 'Beginner Mode', '', () => Modes.set('beginner', !Modes.beginner), { checked: () => Modes.beginner }); C('mode.trackpad', 'Trackpad-Friendly Controls', '', () => Modes.set('trackpad', !Modes.trackpad), { checked: () => Modes.trackpad });
   C('help.tour', 'Take the Tour', '', () => Tour.start());
-  C('help.about', 'About Lumora', '', () => UI.alert('About Lumora', `Lumora ${App.boot.version}\nA local-first photo organizer and editor.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`));
+  C('help.about', 'About Opia', '', () => UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`));
 }
 
 function buildMenus() {
-  const recent = () => (App.cfg.recent_catalogs || []).slice(0, 6).map(p => ({ label: p.split(/[\\/]/).pop().replace(/\.(lumcat|lrcat)$/i, ''), checked: p === App.info.path, run: () => Catalogs.switchTo(p) }));
+  const recent = () => (App.cfg.recent_catalogs || []).slice(0, 6).map(p => ({ label: p.split(/[\\/]/).pop().replace(/\.(opiacat|lumcat|lrcat)$/i, ''), checked: p === App.info.path, run: () => Catalogs.switchTo(p) }));
   const rating = { label: 'Set Rating', sub: [0, 1, 2, 3, 4, 5].map(r => ({ label: r ? '★'.repeat(r) : 'None', key: String(r), run: () => App.rate({ rating: r }) })) };
   const looks = [{ label: 'Theme', sub: looksMenu('theme') }, { label: 'Language', sub: looksMenu('lang') }, '-', 'mode.beginner', 'mode.trackpad', '-'];
   if (Modes.beginner) return App.buildMenus([   // the short menus; Advanced has everything
@@ -102,6 +102,6 @@ async function start() {
     if (tour) setTimeout(() => Tour.start(), wait + 650);
     App.on('catalog', () => { Lib.cells.clear(); });
     if (!App.photos.size && !tour) UI.toast('Welcome. Use File > Import Photos, or open Local Disk in the left panel to add a folder.');
-  } catch (e) { console.error(e); $('#splash').classList.add('gone'); document.body.append(h('div', { class: 'fatal' }, h('h2', {}, 'Lumora could not start'), h('pre', {}, String(e && e.stack || e)))); }
+  } catch (e) { console.error(e); $('#splash').classList.add('gone'); document.body.append(h('div', { class: 'fatal' }, h('h2', {}, 'Opia could not start'), h('pre', {}, String(e && e.stack || e)))); }
 }
 start();

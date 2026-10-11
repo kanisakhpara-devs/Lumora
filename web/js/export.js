@@ -127,7 +127,7 @@ const Exporter = {
   async run(ids, st, quiet) {
     const photos = ids.map(i => App.photo(i)).filter(Boolean); if (!photos.length) return null;
     const settings = { ...st, count: photos.length };
-    if (settings.dest === 'disk' && !settings.folder) settings.folder = App.boot.pictures + '\\Lumora Exports';
+    if (settings.dest === 'disk' && !settings.folder) settings.folder = App.boot.pictures + '\\Opia Exports';
     const { session } = await api('session_begin', { settings, staging: settings.dest !== 'disk' });
     const prog = Progress('Exporting'); let n = 0, errors = [];
     try {
@@ -150,7 +150,7 @@ const Exporter = {
     const profs = (App.boot.profiles || []).map(p => [p.id, `${p.name}${p.space !== 'RGB' ? ' (' + p.space + ')' : ''}`]), lossy = o => ['jpeg', 'webp', 'avif'].includes(o.format), raster = o => o.format !== 'original';
     return [
       { t: 'section', label: 'Export To' }, { k: 'dest', label: 'Destination', t: 'select', opts: [['disk', 'Hard Drive'], ['ftp', 'FTP Server'], ['disc', 'CD / DVD']] },
-      { t: 'section', label: 'Export Location', show: o => o.dest === 'disk' }, { k: 'folder', label: 'Folder', t: 'folder', ph: App.boot.pictures + '\\Lumora Exports', show: o => o.dest === 'disk' }, { k: 'subfolder', label: 'Put in Subfolder', ph: '(none)', show: o => o.dest === 'disk' },
+      { t: 'section', label: 'Export Location', show: o => o.dest === 'disk' }, { k: 'folder', label: 'Folder', t: 'folder', ph: App.boot.pictures + '\\Opia Exports', show: o => o.dest === 'disk' }, { k: 'subfolder', label: 'Put in Subfolder', ph: '(none)', show: o => o.dest === 'disk' },
       { k: 'existing', label: 'Existing Files', t: 'select', opts: [['rename', 'Choose a new name for the exported file'], ['overwrite', 'Overwrite WITHOUT WARNING'], ['skip', 'Skip']], show: o => o.dest === 'disk' },
       { k: 'addToCatalog', label: 'Add to This Catalog', t: 'check', show: o => o.dest === 'disk' }, { k: 'stack', label: 'Add to Stack with the original', t: 'check', show: o => o.dest === 'disk' && o.addToCatalog },
       { t: 'section', label: 'FTP Server', show: o => o.dest === 'ftp' }, { k: 'ftp.host', label: 'Server', ph: 'ftp.example.com', show: o => o.dest === 'ftp' }, { k: 'ftp.port', label: 'Port', t: 'number', show: o => o.dest === 'ftp' }, { k: 'ftp.user', label: 'User Name', ph: 'anonymous', show: o => o.dest === 'ftp' },
@@ -189,7 +189,7 @@ const Exporter = {
       const user = App.conf('export_presets', {});
       const row = (n, set, isUser) => h('div', { class: 'trow', onclick: event => { st = this.merge(this.defaults, set); if (!st.ftp.pass && set.ftp && set.ftp.pass) st.ftp.pass = set.ftp.pass; draw(); $$('.trow', list).forEach(r => r.classList.remove('on')); event.currentTarget.classList.add('on'); },
         oncontextmenu: e => { e.preventDefault(); if (isUser) UI.menu(e.clientX, e.clientY, [{ label: 'Update with Current Settings', run: () => { App.setConf('export_presets', { ...user, [n]: clone(st) }); UI.toast('Preset updated'); } }, { label: 'Delete', run: () => { const u = { ...user }; delete u[n]; App.setConf('export_presets', u); drawList(); } }]); } }, h('span', { class: 'tw none' }), h('span', { class: 'tl' }, n));
-      list.replaceChildren(h('div', { class: 'sub' }, 'Lumora Presets'), ...Object.entries(this.builtin).map(([n, s]) => row(n, s, false)), h('div', { class: 'sub' }, 'User Presets'),
+      list.replaceChildren(h('div', { class: 'sub' }, 'Opia Presets'), ...Object.entries(this.builtin).map(([n, s]) => row(n, s, false)), h('div', { class: 'sub' }, 'User Presets'),
         ...(Object.keys(user).length ? Object.entries(user).map(([n, s]) => row(n, s, true)) : [h('div', { class: 'empty small' }, 'None yet')]),
         h('button', { class: 'btn', onclick: async () => { const n = await UI.prompt('New Export Preset', 'Preset name'); if (n) { App.setConf('export_presets', { ...App.conf('export_presets', {}), [n]: clone(st) }); drawList(); } } }, 'Add\u2026'));
     };
@@ -207,8 +207,8 @@ const Ext = {
   async editIn(ed) {
     const p = App.cur(); if (!p) return;
     const st = { what: App.isEdited(p) || !['JPG', 'JPEG', 'TIF', 'TIFF', 'PNG'].includes(p.format) ? 'copy' : 'original' };
-    const ok = await UI.dialog({ title: 'Edit Photo with ' + ed.name, width: 460, body: UI.form([{ k: 'what', label: 'What to Edit', t: 'select', opts: [['copy', 'Edit a Copy with Lumora Adjustments'], ['original', 'Edit Original']] },
-      { t: 'note', label: o => (o.what === 'copy' ? `A ${String(ed.format || 'tiff').toUpperCase()} copy with your adjustments is saved next to the original, added to the catalog, stacked with it, and opened in ${ed.name}.` : 'The original file is opened directly. Lumora adjustments are not visible to the other program.') }], st), buttons: [['Cancel', null], ['Edit', true, 'primary']] });
+    const ok = await UI.dialog({ title: 'Edit Photo with ' + ed.name, width: 460, body: UI.form([{ k: 'what', label: 'What to Edit', t: 'select', opts: [['copy', 'Edit a Copy with Opia Adjustments'], ['original', 'Edit Original']] },
+      { t: 'note', label: o => (o.what === 'copy' ? `A ${String(ed.format || 'tiff').toUpperCase()} copy with your adjustments is saved next to the original, added to the catalog, stacked with it, and opened in ${ed.name}.` : 'The original file is opened directly. Opia adjustments are not visible to the other program.') }], st), buttons: [['Cancel', null], ['Edit', true, 'primary']] });
     if (!ok) return;
     if (st.what === 'original') return api('fs_open', { path: p.path, app: ed.path });
     await Exporter.run(App.selIds(), Exporter.merge(Exporter.defaults, { dest: 'disk', folder: p.folder, suffix: '-Edit', format: ed.format || 'tiff', colorSpace: ed.colorSpace || 'sRGB', addToCatalog: true, stack: true, post: 'app', app: ed.path, existing: 'rename' }), true);

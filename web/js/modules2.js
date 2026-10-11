@@ -151,8 +151,8 @@ const Print = {
     new ResizeObserver(() => this.draw()).observe(this.host);
     App.on('selection', () => { if (App.module === 'print') this.draw(); });
     const cv = this.cv;
-    cv.ondragover = e => { if (this.st.style === 'custom' && e.dataTransfer.types.includes('text/lumora-photos')) e.preventDefault(); };
-    cv.ondrop = e => { const d = e.dataTransfer.getData('text/lumora-photos'); if (!d) return; e.preventDefault(); const [ix, iy] = this.inch(e), c = this.st.cells.find(k => ix >= k.x && ix <= k.x + k.w && iy >= k.y && iy <= k.y + k.h); const id = JSON.parse(d)[0]; if (c) c.photo = id; else this.st.cells.push({ x: Math.max(0, ix - 2), y: Math.max(0, iy - 1.5), w: 4, h: 3, photo: id }); ch(); };
+    cv.ondragover = e => { if (this.st.style === 'custom' && e.dataTransfer.types.includes('text/opia-photos')) e.preventDefault(); };
+    cv.ondrop = e => { const d = e.dataTransfer.getData('text/opia-photos'); if (!d) return; e.preventDefault(); const [ix, iy] = this.inch(e), c = this.st.cells.find(k => ix >= k.x && ix <= k.x + k.w && iy >= k.y && iy <= k.y + k.h); const id = JSON.parse(d)[0]; if (c) c.photo = id; else this.st.cells.push({ x: Math.max(0, ix - 2), y: Math.max(0, iy - 1.5), w: 4, h: 3, photo: id }); ch(); };
     cv.onmousedown = e => { if (this.st.style !== 'custom') return; const [ix, iy] = this.inch(e), c = [...this.st.cells].reverse().find(k => ix >= k.x && ix <= k.x + k.w && iy >= k.y && iy <= k.y + k.h); if (!c) return; this.selCell = c; const resize = ix > c.x + c.w - 0.35 && iy > c.y + c.h - 0.35, o = { ...c };
       const mv = ev => { const [mx, my] = this.inch(ev); if (resize) { c.w = Math.max(0.5, o.w + mx - ix); c.h = Math.max(0.5, o.h + my - iy); } else { c.x = o.x + mx - ix; c.y = o.y + my - iy; } this.draw(); }, up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); this.st._save(); };
       addEventListener('mousemove', mv); addEventListener('mouseup', up); this.draw(); };
@@ -239,7 +239,7 @@ const Print = {
     const { session } = await api('session_begin', { staging: true }), names = [];
     if (!(await this.renderAll(st.ppi, async (cv, i) => { const name = `print-${String(i + 1).padStart(3, '0')}.png`; await upload('session_put', { session, name }, await Render.blob(cv, 'image/png')); names.push(name); }))) return api('session_cancel', { session });
     const out = await api('session_process', { session, format: 'jpeg', quality: st.quality, colorSpace: st.profile === 'printer' ? 'sRGB' : st.profile, intent: st.intent, sharpen: st.sharpen === 'off' ? null : { enabled: true, target: st.media, amount: st.sharpen }, dpi: st.ppi });
-    if (kind === 'pdf') { const r = await api('pdf_build', { session, pages: out.files, dest: folder + '\\Lumora Print.pdf', dpi: st.ppi }); UI.toast('Print file saved: ' + r.path); }
+    if (kind === 'pdf') { const r = await api('pdf_build', { session, pages: out.files, dest: folder + '\\Opia Print.pdf', dpi: st.ppi }); UI.toast('Print file saved: ' + r.path); }
     else { const r = await runJob(api('session_finish', { session, deliver: { dest: 'folder', folder, post: 'reveal' } }), 'Saving print files'); UI.toast(`${r.files.length} page file(s) saved to ${r.dir}`); }
   },
 };
@@ -275,7 +275,7 @@ const WebMod = {
   html(items) {
     const s = this.st, E = Mod.esc, sq = s.style === 'square', wall = s.style === 'masonry', show = s.style === 'slideshow';
     const cells = items.map((it, i) => `<a class="c" href="${E(it.full)}" data-i="${i}" style="${wall ? `flex-grow:${(it.w / it.h * 100).toFixed(0)};flex-basis:${Math.round(s.thumb * it.w / it.h)}px` : ''}">${s.numbers ? `<i>${i + 1}</i>` : ''}<img loading="lazy" src="${E(it.thumb)}" alt="${E(it.title)}" ${wall ? '' : `style="aspect-ratio:${sq ? '1' : '3/2'}"`}>${!wall && (it.title || it.caption) ? `<span>${it.title ? `<b>${E(it.title)}</b>` : ''}${it.caption ? `<em>${E(it.caption)}</em>` : ''}</span>` : ''}</a>`).join('');
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${E(s.collection)} — ${E(s.title)}</title><meta name="generator" content="Lumora"><style>
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${E(s.collection)} — ${E(s.title)}</title><meta name="generator" content="Opia"><style>
 :root{--t:${s.cText};--bg:${s.cBg};--cell:${s.cCell};--bd:${s.cBorder};--ac:${s.cAccent}}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
 header{padding:28px 4vw 14px;border-bottom:1px solid var(--bd)}header h1{margin:0;font-size:22px;font-weight:600;letter-spacing:.02em}header h2{margin:6px 0 0;font-size:16px;font-weight:400;opacity:.85}header p{margin:8px 0 0;max-width:70ch;opacity:.7;white-space:pre-line}
 main{padding:${s.gap + 12}px 4vw 40px}.g{display:grid;grid-template-columns:repeat(${s.cols},1fr);gap:${s.gap}px}.g.wall{display:flex;flex-wrap:wrap}.g.wall::after{content:"";flex-grow:1e4}

@@ -12,7 +12,7 @@ NS = {
     'dc': 'http://purl.org/dc/elements/1.1/', 'crs': 'http://ns.adobe.com/camera-raw-settings/1.0/',
     'lr': 'http://ns.adobe.com/lightroom/1.0/', 'photoshop': 'http://ns.adobe.com/photoshop/1.0/',
     'Iptc4xmpCore': 'http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/', 'exif': 'http://ns.adobe.com/exif/1.0/',
-    'xmpRights': 'http://ns.adobe.com/xap/1.0/rights/', 'lumora': 'https://lumora.app/ns/1.0/',
+    'xmpRights': 'http://ns.adobe.com/xap/1.0/rights/', 'opia': 'https://github.com/kanisakhpara-devs/Opia/ns/1.0/', 'lumora': 'https://lumora.app/ns/1.0/',
 }
 # our develop key -> Camera Raw name, so other raw converters can read the common adjustments
 CRS = {
@@ -84,7 +84,7 @@ def crs_attrs(dev):
 def build(photo, kw_paths, develop=True, fields='all'):
     """XMP packet for one photo. photo is the UI-shaped dict; kw_paths is a list of ['Parent', 'Child'] lists."""
     iptc = photo.get('iptc') or {}
-    attrs = {'xmp:CreatorTool': 'Lumora ' + core.VERSION}
+    attrs = {'xmp:CreatorTool': 'Opia ' + core.VERSION}
     body = []
     limited = fields in ('copyright', 'copyright_contact')
     if not limited:
@@ -93,7 +93,7 @@ def build(photo, kw_paths, develop=True, fields='all'):
         if photo.get('label'):
             attrs['xmp:Label'] = photo['label']
         if photo.get('flag'):
-            attrs['lumora:Flag'] = str(photo['flag'])
+            attrs['opia:Flag'] = str(photo['flag'])
     for key, tag in IPTC.items():
         v = iptc.get(key)
         if not v or not tag:
@@ -132,7 +132,7 @@ def build(photo, kw_paths, develop=True, fields='all'):
     if develop and dev and not limited:
         for k, v in crs_attrs(dev).items():
             attrs['crs:' + k] = v
-        attrs['lumora:Settings'] = json.dumps(dev, separators=(',', ':'))
+        attrs['opia:Settings'] = json.dumps(dev, separators=(',', ':'))
         curve = (dev.get('curve') or {}).get('rgb')
         if curve:
             body.append('<crs:ToneCurvePV2012><rdf:Seq>%s</rdf:Seq></crs:ToneCurvePV2012>'
@@ -140,7 +140,7 @@ def build(photo, kw_paths, develop=True, fields='all'):
     ns = ' '.join('xmlns:%s=%s' % (p, quoteattr(u)) for p, u in NS.items() if p not in ('x', 'rdf'))
     at = '\n   '.join('%s=%s' % (k, quoteattr(v)) for k, v in attrs.items())
     return ('<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>\n'
-            '<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Lumora %s">\n'
+            '<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Opia %s">\n'
             ' <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n'
             '  <rdf:Description rdf:about="" %s\n   %s>\n   %s\n  </rdf:Description>\n'
             ' </rdf:RDF>\n</x:xmpmeta>\n<?xpacket end="w"?>\n') % (core.VERSION, ns, at, '\n   '.join(body))
@@ -213,9 +213,9 @@ def read_sidecar(path):
                     pass
             elif k == _q('xmp', 'Label'):
                 out['label'] = v
-            elif k == _q('lumora', 'Flag'):
+            elif k in (_q('opia', 'Flag'), _q('lumora', 'Flag')):
                 out['flag'] = int(v)
-            elif k == _q('lumora', 'Settings'):
+            elif k in (_q('opia', 'Settings'), _q('lumora', 'Settings')):
                 try:
                     out['develop'] = json.loads(v)
                 except ValueError:

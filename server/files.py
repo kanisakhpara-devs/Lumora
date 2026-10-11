@@ -116,7 +116,7 @@ def fs_list(path=None, images=True):
                     if e.name.startswith('.') or e.name.startswith('$'):
                         continue
                     if e.is_dir():
-                        if not e.name.lower().endswith(('.lumdata', '.lrdata')):
+                        if not e.name.lower().endswith(('.opiadata', '.lumdata', '.lrdata')):
                             dirs.append({'name': e.name, 'path': e.path})
                     elif images and imaging.is_image(e.name):
                         st = e.stat()
@@ -172,7 +172,7 @@ def import_scan(path, recursive=True):
     known = {r['path'].lower() for r in cat.q('SELECT path FROM photos WHERE master_id IS NULL')}
     out = []
     for root, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if not d.startswith('.') and not d.lower().endswith(('.lumdata', '.lrdata'))] if recursive else []
+        dirs[:] = [d for d in dirs if not d.startswith('.') and not d.lower().endswith(('.opiadata', '.lumdata', '.lrdata'))] if recursive else []
         for f in sorted(files):
             if imaging.is_image(f):
                 p = os.path.join(root, f)

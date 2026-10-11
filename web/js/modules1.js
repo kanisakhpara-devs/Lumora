@@ -31,9 +31,10 @@ const Mod = {
 };
 
 /* Identity Plate: your name or logo in the top-left corner, also usable in Slideshow, Print and Web output. */
+const WORDMARK = '<svg class="wordmark" viewBox="0 6 260 134" role="img" aria-label="opia"><circle cx="32" cy="75" r="25"/><circle class="wm-dot" cx="38" cy="69" r="7"/><path d="M86 50V128"/><circle cx="111" cy="75" r="25"/><path d="M166 50V100"/><circle class="wm-i" cx="166" cy="22" r="9"/><circle cx="221" cy="75" r="25"/><path d="M246 50V100"/></svg>';
 const Identity = {
-  get() { return { mode: 'text', text: 'Lumora', font: 'Georgia', size: 21, color: '#d6d6d6', bold: false, italic: false, image: '', ...App.conf('identity', {}) }; },
-  el() { const c = this.get(); return c.mode === 'image' && c.image ? h('img', { src: '/img/file?path=' + encodeURIComponent(c.image), class: 'ip-img', draggable: false }) : h('span', { class: 'ip-text', style: { fontFamily: `"${c.font}", serif`, fontSize: c.size + 'px', color: c.color, fontWeight: c.bold ? 700 : 400, fontStyle: c.italic ? 'italic' : 'normal' } }, c.text); },
+  get() { return { mode: 'text', text: 'Opia', font: 'Georgia', size: 21, color: '#d6d6d6', bold: false, italic: false, image: '', ...App.conf('identity', {}) }; },
+  el() { const c = this.get(); if (!App.conf('identity', null)) { const m = h('span', { class: 'ip-mark' }); m.innerHTML = WORDMARK; return m; } return c.mode === 'image' && c.image ? h('img', { src: '/img/file?path=' + encodeURIComponent(c.image), class: 'ip-img', draggable: false }) : h('span', { class: 'ip-text', style: { fontFamily: `"${c.font}", serif`, fontSize: c.size + 'px', color: c.color, fontWeight: c.bold ? 700 : 400, fontStyle: c.italic ? 'italic' : 'normal' } }, c.text); },
   /* draw centred on (cx, cy); height = pixel height of the plate */
   async draw(ctx, cx, cy, height, opacity = 1, color) {
     const c = this.get(); ctx.save(); ctx.globalAlpha = opacity;
@@ -83,8 +84,8 @@ const MapMod = {
       addEventListener('mousemove', mv); addEventListener('mouseup', up);
     };
     cv.onmousemove = e => { const m = this.markerAt(e); this.hover = m; cv.style.cursor = m ? 'pointer' : 'grab'; this.tip.style.display = m ? '' : 'none'; if (m) { this.tip.replaceChildren(h('img', { src: App.thumb(m.photos[0]) }), h('div', {}, m.photos.length > 1 ? m.photos.length + ' photos' : m.photos[0].filename)); Object.assign(this.tip.style, { left: m.x + 14 + 'px', top: m.y - 20 + 'px' }); } };
-    cv.ondragover = e => { if (e.dataTransfer.types.includes('text/lumora-photos')) e.preventDefault(); };
-    cv.ondrop = e => { const d = e.dataTransfer.getData('text/lumora-photos'); if (!d) return; e.preventDefault(); const [lat, lon] = this.at(e); const ids = JSON.parse(d); App.setMeta(ids, { gps: [+lat.toFixed(6), +lon.toFixed(6)] }); UI.toast(`${ids.length} photo(s) placed at ${lat.toFixed(4)}, ${lon.toFixed(4)}`); };
+    cv.ondragover = e => { if (e.dataTransfer.types.includes('text/opia-photos')) e.preventDefault(); };
+    cv.ondrop = e => { const d = e.dataTransfer.getData('text/opia-photos'); if (!d) return; e.preventDefault(); const [lat, lon] = this.at(e); const ids = JSON.parse(d); App.setMeta(ids, { gps: [+lat.toFixed(6), +lon.toFixed(6)] }); UI.toast(`${ids.length} photo(s) placed at ${lat.toFixed(4)}, ${lon.toFixed(4)}`); };
     cv.oncontextmenu = e => { const [lat, lon] = this.at(e); UI.menu(e.clientX, e.clientY, [{ label: `Add GPS Coordinates to Selected Photos (${App.selIds().length})`, run: () => App.setMeta(App.selIds(), { gps: [+lat.toFixed(6), +lon.toFixed(6)] }) }, { label: 'Save Location Here…', run: () => this.saveLocation(lat, lon) }, { label: 'Copy Coordinates', run: () => navigator.clipboard.writeText(lat.toFixed(6) + ', ' + lon.toFixed(6)) }]); };
     App.on('selection', () => { if (App.module === 'map') { this.draw(); this.drawLoc(); } }); App.on('meta', () => { if (App.module === 'map') { this.draw(); this.drawLoc(); this.drawSaved(); } }); App.on('list', () => { if (App.module === 'map') this.draw(); });
     this.toolbar(); this.drawSaved(); this.drawTrack();
@@ -249,8 +250,8 @@ const Book = {
       const hit = e => { const b = cv.getBoundingClientRect(), fx = (e.clientX - b.left) / b.width, fy = (e.clientY - b.top) / b.height; return this.cells(pg).findIndex(c => fx >= c.x && fx <= c.x + c.w && fy >= c.y && fy <= c.y + c.h); };
       cv.onclick = e => { this.sel = i; const c = hit(e); this.cell = c < 0 ? 0 : c; this.draw(); this.panels(); };
       cv.ondblclick = () => { this.single = !this.single; this.sel = i; this.draw(); this.toolbar(); };
-      cv.ondragover = e => { if (e.dataTransfer.types.includes('text/lumora-photos')) e.preventDefault(); };
-      cv.ondrop = e => { const d = e.dataTransfer.getData('text/lumora-photos'); if (!d) return; e.preventDefault(); const ids = JSON.parse(d), cells = this.cells(pg); let c = hit(e); if (c < 0 || cells[c].t) c = cells.findIndex(k => !k.t); if (c < 0) return UI.toast('This page layout has no photo cell');
+      cv.ondragover = e => { if (e.dataTransfer.types.includes('text/opia-photos')) e.preventDefault(); };
+      cv.ondrop = e => { const d = e.dataTransfer.getData('text/opia-photos'); if (!d) return; e.preventDefault(); const ids = JSON.parse(d), cells = this.cells(pg); let c = hit(e); if (c < 0 || cells[c].t) c = cells.findIndex(k => !k.t); if (c < 0) return UI.toast('This page layout has no photo cell');
         let slot = cells.slice(0, c + 1).filter(k => !k.t).length - 1; const slots = cells.filter(k => !k.t).length; for (const id of ids) { if (slot >= slots) break; pg.photos[slot++] = id; } this.sel = i; this.cell = c; this.changed(); this.panels(); };
       cv.oncontextmenu = e => { e.preventDefault(); this.sel = i; UI.menu(e.clientX, e.clientY, [{ label: 'Add Page After', run: () => this.addPage() }, { label: 'Duplicate Page', run: () => { st.pages.splice(i + 1, 0, clone(pg)); this.changed(); } }, { label: 'Remove Photo from Cell', run: () => { const c = hit(e); if (c >= 0) { this.cell = c; this.clearCell(); } } }, { label: 'Remove Page', run: () => this.removePage() }]); };
       return h('div', { class: 'book-slot' }, cv, h('div', { class: 'dim' }, i === 0 && pg.layout === 'Title Page' ? 'Title' : 'Page ' + (i + 1)));

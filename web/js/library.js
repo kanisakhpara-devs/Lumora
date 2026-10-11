@@ -270,7 +270,7 @@ const Lib = {
       onmouseenter: e => { if (Painter.on && e.buttons === 1) Painter.apply(p, e.altKey); },
       ondblclick: () => !Painter.on && this.setView('loupe'),
       oncontextmenu: e => Lib.photoMenu(e),
-      ondragstart: e => { if (Painter.on) return e.preventDefault(); this.dragging = true; e.dataTransfer.setData('text/lumora-photos', JSON.stringify(App.selIds())); e.dataTransfer.effectAllowed = 'copyMove'; },
+      ondragstart: e => { if (Painter.on) return e.preventDefault(); this.dragging = true; e.dataTransfer.setData('text/opia-photos', JSON.stringify(App.selIds())); e.dataTransfer.effectAllowed = 'copyMove'; },
       ondragend: () => { this.dragging = false; },
     },
       h('div', { class: 'c-top' }, h('span', { class: 'idx' }, i + 1), h('span', { class: 'fn', title: p.path }, p.filename + (p.copy_name ? ' • ' + p.copy_name : ''))),
@@ -518,7 +518,7 @@ const Film = {
       if (!c) {
         c = h('div', { class: 'fcell' + (App.selection.has(p.id) ? ' sel' : '') + (p.id === App.active ? ' act' : '') + (p.flag === -1 ? ' rej' : ''), draggable: true, style: p.label ? { '--lab': LABELS[p.label], borderBottomColor: LABELS[p.label] } : null,
           onmousedown: e => { if (e.button === 2 && App.selection.has(p.id)) return; App.select(p.id, e); }, ondblclick: () => { if (App.module === 'library') Lib.setView('loupe'); }, oncontextmenu: e => Lib.photoMenu(e),
-          ondragstart: e => { e.dataTransfer.setData('text/lumora-photos', JSON.stringify(App.selIds())); e.dataTransfer.effectAllowed = 'copyMove'; } },
+          ondragstart: e => { e.dataTransfer.setData('text/opia-photos', JSON.stringify(App.selIds())); e.dataTransfer.effectAllowed = 'copyMove'; } },
           h('img', { src: App.thumb(p), draggable: false }), p.flag ? h('b', { class: 'flag f' + p.flag }, '⚑') : null, p.rating ? h('span', { class: 'fst' }, '★'.repeat(p.rating)) : null,
           p._stackN > 1 ? h('b', { class: 'stack' }, p._stackN) : null, p.master_id ? h('b', { class: 'vc' }) : null, App.isEdited(p) ? h('b', { class: 'bd ed' }, '±') : null);
         this.cells.set(p.id, c); this.space.append(c);

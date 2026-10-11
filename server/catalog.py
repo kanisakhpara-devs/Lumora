@@ -1,4 +1,4 @@
-"""SQLite catalogs (.lumcat): open/create/switch, backup, optimise, and all library data edits."""
+"""SQLite catalogs (.opiacat): open/create/switch, backup, optimise, and all library data edits."""
 import datetime
 import json
 import os
@@ -10,25 +10,27 @@ import zipfile
 from . import core
 from .core import api, cfg, ApiError
 
-EXT, DATA = '.lumcat', '.lumdata'
-OLD_EXT, OLD_DATA = '.lrcat', '.lrdata'      # what catalogs and preview folders were called before the rename
-CAT_EXTS, DATA_EXTS = (EXT, OLD_EXT), (DATA, OLD_DATA)
+EXT, DATA = '.opiacat', '.opiadata'
+OLD_EXTS, OLD_DATAS = ('.lumcat', '.lrcat'), ('.lumdata', '.lrdata')      # what catalogs and preview folders were called before
+CAT_EXTS, DATA_EXTS = (EXT,) + OLD_EXTS, (DATA,) + OLD_DATAS
 
 
 def migrate(path):
-    """A catalog still saved under the old extension is renamed in place, with its preview folders.
+    """A catalog still saved under an earlier extension is renamed in place, with its preview folders.
     Returns the path to open: the new name, or the old one if something still has the files open."""
-    if not path.lower().endswith(OLD_EXT):
+    old = next((e for e in OLD_EXTS if path.lower().endswith(e)), None)
+    if not old:
         return path
-    new = path[:-len(OLD_EXT)] + EXT
+    stem = path[:-len(old)]
+    new = stem + EXT
     if not os.path.exists(path) or os.path.exists(new):
         return new if os.path.exists(new) else path
     try:
         os.rename(path, new)
     except OSError:
         return path
-    stem = path[:-len(OLD_EXT)]
-    pairs = [(path + s, new + s) for s in ('-wal', '-shm')] + [(stem + k + OLD_DATA, stem + k + DATA) for k in (' Previews', ' Smart Previews')]
+    pairs = [(path + s, new + s) for s in ('-wal', '-shm')]
+    pairs += [(stem + k + d, stem + k + DATA) for k in (' Previews', ' Smart Previews') for d in OLD_DATAS]
     for a, b in pairs:
         try:
             if os.path.exists(a) and not os.path.exists(b):
@@ -177,7 +179,7 @@ def photos_out(cat, ids=None):
 # ---------------------------------------------------------------- catalog management
 
 def default_catalog_path():
-    return os.path.join(core.HOME, 'Lumora Catalog', 'Lumora Catalog' + EXT)
+    return os.path.join(core.HOME, 'Opia Catalog', 'Opia Catalog' + EXT)
 
 
 def open_catalog(path):
@@ -196,7 +198,7 @@ def open_catalog(path):
 
 
 def open_startup():
-    recent = [p for p in cfg.get('recent_catalogs', []) if os.path.exists(p)]
+    recent = [p for p in map(migrate, cfg.get('recent_catalogs', [])) if os.path.exists(p)]
     return open_catalog(recent[0] if recent else default_catalog_path())
 
 
@@ -278,7 +280,7 @@ def catalog_backups():
             continue
         for root, _dirs, files in os.walk(base):
             for f in files:
-                if f.lower().endswith((EXT + '.zip', OLD_EXT + '.zip')):
+                if f.lower().endswith(tuple(e + '.zip' for e in CAT_EXTS)):
                     p = os.path.join(root, f)
                     out.append({'path': p, 'name': os.path.basename(root), 'size': os.path.getsize(p),
                                 'mtime': os.path.getmtime(p)})

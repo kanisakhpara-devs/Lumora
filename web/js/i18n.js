@@ -3,13 +3,13 @@
    Translation works on the finished page: every piece of interface text that has an entry below is swapped,
    and swapped back when the language changes. Text without an entry (and all of your own content) is left alone. */
 
-const THEMES = { noir: 'Gold Noir', midnight: 'Midnight Teal', porcelain: 'Porcelain (light)', lilac: 'Lilac Haze (light)' };
+const THEMES = { noir: 'Opia Dark', midnight: 'Midnight Teal', porcelain: 'Porcelain (light)', lilac: 'Lilac Haze (light)' };
 const Theme = {
-  get cur() { return localStorage.lumora_theme in THEMES ? localStorage.lumora_theme : 'noir'; },
+  get cur() { return localStorage.opia_theme in THEMES ? localStorage.opia_theme : 'noir'; },
   css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); },
   rgb(name, alpha = 1) { const m = this.css(name).match(/^#?([0-9a-f]{6})$/i); const n = m ? parseInt(m[1], 16) : 0x1a1a1b; return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255, alpha]; },
   set(name) {
-    localStorage.lumora_theme = name; document.documentElement.dataset.theme = name;
+    localStorage.opia_theme = name; document.documentElement.dataset.theme = name;
     if (typeof App === 'undefined' || !App.module) return;   // still starting up
     App.emit('theme');
     if (Dev.cv) { Dev.render(); Dev.histoSoon(); }
@@ -33,7 +33,7 @@ Build Smart Previews=Crear previsualizaciones inteligentes|Discard Smart Preview
 Reset All Settings=Restaurar todos los ajustes|Undo=Deshacer|Redo=Rehacer|New Snapshot…=Nueva instantánea…|New Preset…=Nuevo ajuste preestablecido…|Auto Tone=Tono automático|Soft Proofing=Prueba en pantalla|Reference View=Vista de referencia|Before / After=Antes / después|Crop & Straighten=Recortar y enderezar
 Spot Removal / Healing=Eliminación de manchas / corrección|Red Eye Correction=Corrección de ojos rojos|Masking: Brush=Máscara: pincel|Masking: Linear Gradient=Máscara: degradado lineal|Masking: Radial Gradient=Máscara: degradado radial|Guided Upright=Upright guiado
 Save Metadata to XMP Sidecar=Guardar metadatos en archivo XMP|Read Metadata from XMP Sidecar=Leer metadatos del archivo XMP|Show All EXIF…=Mostrar todo el EXIF…|New Keyword Tag…=Nueva palabra clave…|Panorama…=Panorama…|Find Faces in These Photos=Buscar caras en estas fotos|Enable Filters=Activar filtros|Show Filter Bar=Mostrar barra de filtros|Painter (Spray Can)=Pintor (aerosol)
-Keyboard Shortcuts…=Atajos de teclado…|Keyboard Shortcuts=Atajos de teclado|About Lumora=Acerca de Lumora|Theme=Tema|Language=Idioma|Appearance=Apariencia
+Keyboard Shortcuts…=Atajos de teclado…|Keyboard Shortcuts=Atajos de teclado|About Opia=Acerca de Opia|Theme=Tema|Language=Idioma|Appearance=Apariencia
 Cancel=Cancelar|Close=Cerrar|Done=Hecho|Save=Guardar|Delete=Eliminar|Create=Crear|Open=Abrir|Choose=Elegir|Add=Añadir|Remove=Quitar|Rename=Renombrar|Reset=Restaurar|Copy=Copiar|Paste=Pegar|Clear=Borrar|Start=Iniciar|Import=Importar|Merge=Combinar|Convert=Convertir|Restore=Restaurar|Refresh=Actualizar|Duplicate=Duplicar|Move=Mover|Upload=Subir|Name=Nombre|Yes=Sí
 New Folder=Nueva carpeta|Choose Folder=Elegir carpeta|Choose File=Elegir archivo|Preset…=Ajuste…|Preset=Ajuste|Save Preset=Guardar ajuste|Check All=Marcar todo|Check None=Desmarcar todo|Uncheck All=Desmarcar todo|Browse…=Examinar…|Edit…=Editar…|Add…=Añadir…|Manage…=Gestionar…|Customize…=Personalizar…|Choose…=Elegir…
 Navigator=Navegador|Catalog=Catálogo|Folders=Carpetas|Local Disk=Disco local|Collections=Colecciones|Histogram=Histograma|Quick Develop=Revelado rápido|Keywording=Palabras clave|Keyword List=Lista de palabras clave|Presets=Ajustes preestablecidos|Snapshots=Instantáneas|History=Historial
@@ -55,13 +55,13 @@ Distortion=Distorsión|Vignetting=Viñeteado|Manual=Manual|Defringe=Eliminar hal
 Post-Crop Vignetting=Viñeta posterior al recorte|Roundness=Redondez|Feather=Desvanecer|Grain=Granulado|Size=Tamaño|Roughness=Rugosidad|Shadows Tint=Matiz de sombras|Red Primary=Primario rojo|Green Primary=Primario verde|Blue Primary=Primario azul|Save Camera Profile…=Guardar perfil de cámara…
 Region=Región|Lights=Claros|Darks=Oscuros|Split Points=Puntos de división|Point Curve…=Curva de puntos…|Medium Contrast=Contraste medio|Strong Contrast=Contraste fuerte|Lift Shadows=Elevar sombras|Linear=Lineal|Negative=Negativo
 Intent=Interpretación|Perceptual=Perceptual|Relative=Relativo|Simulate Paper & Ink=Simular papel y tinta|Show Destination Gamut Warning=Mostrar aviso de gama de destino|Create Proof Copy=Crear copia de prueba|Add Profile…=Añadir perfil…
-Before ¦ After=Antes ¦ Después|Before=Antes|After=Después|Split=Dividida|Reference=Referencia|Set Reference=Fijar referencia|Active=Activa|Zoom=Zoom|Fit=Ajustar|Fill=Rellenar|Guides=Guías|User Presets=Ajustes de usuario|Lumora Presets=Ajustes de Lumora|Copy…=Copiar…
+Before ¦ After=Antes ¦ Después|Before=Antes|After=Después|Split=Dividida|Reference=Referencia|Set Reference=Fijar referencia|Active=Activa|Zoom=Zoom|Fit=Ajustar|Fill=Rellenar|Guides=Guías|User Presets=Ajustes de usuario|Opia Presets=Ajustes de Opia|Copy…=Copiar…
 Crop=Recortar|Heal=Corregir|Red Eye=Ojos rojos|Clone=Clonar|Content-Aware=Según contenido|Opacity=Opacidad|Refresh Source=Actualizar origen|Pupil Size=Tamaño de pupila|Darken=Oscurecer|Angle=Ángulo|Flip H=Voltear H|Flip V=Voltear V|Original=Original|Free (unlocked)=Libre (desbloqueado)
 Create New Mask=Crear máscara nueva|Masks=Máscaras|Brush=Pincel|Linear Gradient=Degradado lineal|Radial Gradient=Degradado radial|Range Mask=Máscara de rango|Depth (estimated)=Profundidad (estimada)|Target=Objetivo|Darkest=Más oscuro|Brightest=Más claro|Nearest=Más cercano|Farthest=Más lejano|Invert=Invertir|Brush Size=Tamaño de pincel|Flow=Flujo|Erase (or hold Alt)=Borrar (o mantener Alt)|Adjustments=Ajustes|Sharpness=Nitidez|Noise=Ruido|Color Hue=Tono de color|Color Amount=Cantidad de color|Overlay (O)=Superposición (O)|Clear Guides=Borrar guías
 Upright=Upright|Straighten Tool=Herramienta enderezar|Apply to All Selected Photos=Aplicar a todas las fotos seleccionadas|Apply on Import=Aplicar al importar|Update with Current Settings=Actualizar con los ajustes actuales
 From=Desde|Include Subfolders=Incluir subcarpetas|File Handling=Gestión de archivos|File Renaming=Cambio de nombre|Rename Files=Renombrar archivos|Template=Plantilla|Custom Text=Texto personalizado|Start Number=Número inicial|Apply During Import=Aplicar durante la importación|Develop Settings=Ajustes de revelado|Destination=Destino|Organize=Organizar|Into one folder=En una sola carpeta
 Catalog Settings=Ajustes del catálogo|Catalogs=Catálogos|Backup=Copia de seguridad|Optimize & Info=Optimizar e información|Catalog Name=Nombre del catálogo|Location=Ubicación|Modified=Modificado|Open Other Catalog…=Abrir otro catálogo…|Back Up Catalog=Copia de seguridad del catálogo|Back Up Now=Hacer copia ahora|Backup Folder=Carpeta de copias|Existing Backups=Copias existentes|No backups yet=Aún no hay copias|Never=Nunca
-Once a month, when exiting=Una vez al mes, al salir|Once a week, when exiting=Una vez a la semana, al salir|Once a day, when exiting=Una vez al día, al salir|Every time Lumora exits=Cada vez que se cierra Lumora|Photos=Fotos|Last Backup=Última copia|Last Optimized=Última optimización|Build All Smart Previews=Crear todas las previsualizaciones inteligentes
+Once a month, when exiting=Una vez al mes, al salir|Once a week, when exiting=Una vez a la semana, al salir|Once a day, when exiting=Una vez al día, al salir|Every time Opia exits=Cada vez que se cierra Opia|Photos=Fotos|Last Backup=Última copia|Last Optimized=Última optimización|Build All Smart Previews=Crear todas las previsualizaciones inteligentes
 General=General|External Editing=Edición externa|Detect Installed Editors=Detectar editores instalados|Add Application…=Añadir aplicación…|DNG Converter=Conversor DNG|Converter Location=Ubicación del conversor|Map Tiles=Mosaicos del mapa|Enabled=Activado|Reload All=Recargar todo
 Tethered Capture Settings=Ajustes de captura conectada|Session Name=Nombre de la sesión|Watched Folder=Carpeta vigilada|Auto-select each new capture=Seleccionar cada captura nueva|Disconnect Camera=Desconectar cámara|Open Folder=Abrir carpeta|Stop Tethering=Detener captura
 Export To=Exportar a|Hard Drive=Disco duro|FTP Server=Servidor FTP|Export Location=Ubicación de exportación|Put in Subfolder=Colocar en subcarpeta|Existing Files=Archivos existentes|Skip=Omitir|Add to This Catalog=Añadir a este catálogo|Server=Servidor|Port=Puerto|User Name=Usuario|Password=Contraseña|Server Path=Ruta del servidor|Passive mode=Modo pasivo|Test Connection=Probar conexión|Disc Name=Nombre del disco|Recorder=Grabadora
@@ -77,8 +77,8 @@ Dimensions=Dimensiones|Cropped=Recortada|Copy Name=Nombre de la copia|Make=Marca
 No photo selected=Ninguna foto seleccionada|No keyword matches=Ninguna palabra clave coincide|Working=Trabajando|Importing=Importando|Exporting=Exportando|Finishing export=Finalizando exportación|Building Smart Previews=Creando previsualizaciones inteligentes|Finding faces=Buscando caras|Painter=Pintor|Landscape=Horizontal|Portrait=Vertical|Square=Cuadrado
 Select a photo in the filmstrip to develop it.=Selecciona una foto en la tira de imágenes para revelarla.|Named People=Personas con nombre|Unnamed People=Personas sin nombre|Create Stack=Crear pila|Auto Crop=Recorte automático|Auto Align=Alinear automáticamente|Boundary Warp=Deformación de límite|Projection=Proyección
 Use: Selected (or all)=Usar: seleccionadas (o todas)|Use: All Filmstrip Photos=Usar: todas las fotos de la tira|Use: Selected Photos=Usar: fotos seleccionadas|Use: Flagged Photos=Usar: fotos con indicador|Soft Proofing (S)=Prueba en pantalla (S)|Search…  (space = and, !word = exclude)=Buscar…  (espacio = y, !palabra = excluir)
-Gold Noir=Oro noir|Midnight Teal=Turquesa medianoche|Porcelain (light)=Porcelana (claro)|Lilac Haze (light)=Bruma lila (claro)|Loading your catalog…=Cargando tu catálogo…|Double-click to reset=Doble clic para restaurar|Click here to add keywords  (Parent > Child)=Haz clic para añadir palabras clave  (Padre > Hija)
-Take the Tour=Hacer el recorrido|Skip tour=Saltar recorrido|Back=Atrás|Next=Siguiente|Welcome to Lumora=Te damos la bienvenida a Lumora|A one-minute tour of where everything lives. Just follow the little gold ball.=Un recorrido de un minuto para saber dónde está cada cosa. Solo sigue la bolita dorada.|Seven modules=Siete módulos|Your sources=Tus orígenes|The grid=La cuadrícula|Find anything=Encuentra lo que sea|Details and quick edits=Detalles y ajustes rápidos|The filmstrip=La tira de imágenes|Make it yours=Hazlo tuyo
+Opia Dark=Opia oscuro|Midnight Teal=Turquesa medianoche|Porcelain (light)=Porcelana (claro)|Lilac Haze (light)=Bruma lila (claro)|Loading your catalog…=Cargando tu catálogo…|Double-click to reset=Doble clic para restaurar|Click here to add keywords  (Parent > Child)=Haz clic para añadir palabras clave  (Padre > Hija)
+Take the Tour=Hacer el recorrido|Skip tour=Saltar recorrido|Back=Atrás|Next=Siguiente|Welcome to Opia=Te damos la bienvenida a Opia|A one-minute tour of where everything lives. Just follow the little blue dot.=Un recorrido de un minuto para saber dónde está cada cosa. Solo sigue el puntito azul.|Seven modules=Siete módulos|Your sources=Tus orígenes|The grid=La cuadrícula|Find anything=Encuentra lo que sea|Details and quick edits=Detalles y ajustes rápidos|The filmstrip=La tira de imágenes|Make it yours=Hazlo tuyo
 Library organises and Develop edits. Map, Book, Slideshow, Print and Web turn your photos into something to share. Switch here, or press Ctrl+Alt+1 to 7.=Biblioteca organiza y Revelar edita. Mapa, Libro, Proyección, Imprimir y Web convierten tus fotos en algo para compartir. Cambia aquí o pulsa Ctrl+Alt+1 a 7.
 Catalog, Folders and Collections decide which photos you are looking at. Open Local Disk to add a folder, or use File > Import Photos.=Catálogo, Carpetas y Colecciones deciden qué fotos estás viendo. Abre Disco local para añadir una carpeta o usa Archivo > Importar fotos.
 Every photo in the current source. Press 1 to 5 to rate, P to flag a pick and X to reject. G and E switch between Grid and Loupe.=Todas las fotos del origen actual. Pulsa 1 a 5 para puntuar, P para marcar una selección y X para rechazar. G y E cambian entre Cuadrícula y Lupa.
@@ -92,7 +92,7 @@ Trackpad-friendly controls: two fingers pan, pinch zooms, bigger sliders=Control
 
 const Lang = {
   dict: new Map(), orig: new WeakMap(), attrOrig: new WeakMap(), busy: false,
-  get cur() { return localStorage.lumora_lang === 'es' ? 'es' : 'en'; },
+  get cur() { return localStorage.opia_lang === 'es' ? 'es' : 'en'; },
   init() {
     // a literal bar inside an entry is written as ¦
     for (const line of ES.trim().split('\n')) for (const raw of line.split('|')) { const pair = raw.replace(/\u00a6/g, '|'), i = pair.indexOf('='); if (i > 0) this.dict.set(pair.slice(0, i), pair.slice(i + 1)); }
@@ -142,7 +142,7 @@ const Lang = {
   },
   set(lang) {
     this.busy = true; this.restore(document.body);
-    localStorage.lumora_lang = lang; document.documentElement.lang = lang;
+    localStorage.opia_lang = lang; document.documentElement.lang = lang;
     if (lang === 'es') this.walk(document.body);
     this.busy = false;
   },
