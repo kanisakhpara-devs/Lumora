@@ -5,6 +5,7 @@
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const MU_TIPS = {
+  swing: 'Pushes every second small step a little late, which turns a stiff beat into a relaxed, bouncy one. 0 is straight; 30 to 50 is a clear shuffle.',
   tempo: 'How fast the song is, in beats per minute. 80 to 100 feels relaxed, 120 and up feels like dancing.',
   key: 'The home note of the song. Change it to move everything higher or lower. If it sounds fine, leave it.',
   scale: 'The set of notes the riffs are allowed to use. Major sounds bright, Minor sounds moody. Because of it, no note you click will sound wrong.',
@@ -19,7 +20,7 @@ const MU_TIPS = {
 };
 
 const Music = {
-  id: 'music', name: 'Music', exclusive: true, song: null, files: new Map(), sel: null, clipSel: null, range: null, cursor: 0, pps: 40, undo: [], redo: [], grids: [], clipboard: null, rec: null,
+  id: 'music', name: 'Music', exclusive: true, song: null, files: new Map(), sel: null, clipSel: null, range: null, cursor: 0, pps: 40, undo: [], redo: [], grids: [], clipboard: null, rec: null, spec: false, snap: true,
 
   /* ---- song lifecycle */
   blank(name) { return { name, bpm: 100, key: 9, scale: 'minor', bars: 4, vol: .9, prog: null, tracks: [] }; },
@@ -28,6 +29,8 @@ const Music = {
     this.bar = h('div', { class: 'mu-bar' }); this.tools = h('div', { class: 'mu-tools' }); this.stage = h('div', { class: 'mu-stage' }); this.editor = h('div', { class: 'mu-editor' });
     el.center.append(this.bar, this.tools, this.stage, this.editor);
     Player.onstop = () => { if (this.song) this.drawBar(); };
+    this.stage.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+    this.stage.addEventListener('drop', async e => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { this.addAudio(await Player.ready().decodeAudioData(await f.arrayBuffer()), f.name.replace(/\.[^.]+$/, ''), null, Modes.beginner ? 0 : this.cursor); } catch (err) { UI.toast(f.name + ' could not be read as audio.', 'error'); } } });
     App.on('prefs', k => { if (k === 'beginner') this.draw(); });
     App.on('theme', () => this.draw());
     this.saveSoon = debounce(() => this.save().catch(UI.error), 900);
@@ -51,7 +54,7 @@ const Music = {
   },
   async decode(path) { const r = await fetch('/img/audio?path=' + encodeURIComponent(path)); if (!r.ok) throw new Error('missing'); return Player.ready().decodeAudioData(await r.arrayBuffer()); },
   async save() {
-    const song = this.song, used = new Set(song.tracks.flatMap(t => (t.clips || []).map(c => c.buf))), bufs = {};
+    const song = this.song, used = new Set(song.tracks.flatMap(t => [...(t.clips || []).map(c => c.buf), ...Object.values(t.samples || {}), t.sample]).filter(Boolean)), bufs = {};
     for (const id of used) {
       if (!this.files.has(id) && Player.bufs.has(id)) this.files.set(id, (await upload('music_audio_put', { song: song.name, file: id + '.wav' }, encodeWav(Player.bufs.get(id)))).path);
       if (this.files.has(id)) bufs[id] = this.files.get(id);
@@ -75,13 +78,23 @@ const Music = {
 
   /* ---- tracks */
   newTrack(role) {
-    const R = ROLES[role], n = this.song.tracks.filter(t => t.role === role).length, tr = { id: uid(), role, type: role === 'drums' ? 'drums' : 'synth', name: R.name + (n ? ' ' + (n + 1) : ''), vol: .8, len: 4 };
-    if (role === 'drums') tr.steps = {}; else { tr.preset = R.preset; tr.notes = []; }
+    const R = ROLES[role], st = STYLES[this.song.style] || {}, n = this.song.tracks.filter(t => t.role === role).length, tr = { id: uid(), role, type: role === 'drums' ? 'drums' : 'synth', name: R.name + (n ? ' ' + (n + 1) : ''), vol: .8, len: 4 };
+    if (role === 'drums') { tr.steps = {}; tr.kit = st.kit || 'studio'; } else { tr.preset = st[role] || R.preset; tr.notes = []; }
     Gen.fill(this.song, tr); this.song.tracks.push(tr); this.sel = tr.id;
   },
   addTrack(role) { this.edit(() => this.newTrack(role)); },
-  /* a whole first draft: four parts written to fit each other */
-  starter() { this.edit(() => { Gen.prog(this.song, true); for (const r of ['drums', 'bass', 'chords', 'melody']) this.newTrack(r); this.sel = null; }); if (!Player.playing) Player.play(0); this.drawBar(); },
+  /* a whole first draft in a style: four parts written to fit each other */
+  starter(style) {
+    this.edit(() => { const s = this.song, st = STYLES[style = style || Gen.pick(Object.keys(STYLES))]; Object.assign(s, { style, bpm: st.bpm, scale: st.scale, swing: st.swing || 0 }); Gen.prog(s, true); for (const r of ['drums', 'bass', 'chords', 'melody']) this.newTrack(r); this.sel = null; });
+    if (!Player.playing) Player.play(0); this.drawBar();
+  },
+  /* a sound of your own: for one drum row, or as the instrument of a riff */
+  async pickSample(tr, row) {
+    const path = await UI.pickFile(App.conf('music_dir', App.boot.pictures) + '\\x', ['.wav', '.mp3', '.ogg', '.flac', '.m4a', '.aac']); if (!path) return false;
+    let buf; try { buf = await this.decode(path); } catch (e) { UI.toast('That file could not be read as audio.', 'error'); return false; }
+    const id = uid(); Player.bufs.set(id, buf); this.files.set(id, path); App.setConf('music_dir', path.replace(/[\\/][^\\/]*$/, ''));
+    this.edit(() => { if (row) tr.samples = { ...(tr.samples || {}), [row]: id }; else { tr.sample = id; tr.preset = 'sample'; } }); Player.tap(tr, row || 60); return true;
+  },
   idea(tr) { this.edit(() => Gen.fill(this.song, tr)); },
   removeTrack(tr) { this.edit(() => { this.song.tracks = this.song.tracks.filter(t => t !== tr); if (this.sel === tr.id) this.sel = null; this.range = null; }); },
   duplicate(tr) { this.edit(() => { const c = clone(tr); c.id = uid(); c.name += ' copy'; delete c.x; delete c.y; (c.clips || []).forEach(k => { k.id = uid(); }); this.song.tracks.splice(this.song.tracks.indexOf(tr) + 1, 0, c); this.sel = c.id; }); },
@@ -106,12 +119,42 @@ const Music = {
     this.rec = mr; Player.loop = false; mr.start(); Player.play(at); this.drawBar();
   },
   stopRec() { if (this.rec && this.rec.state !== 'inactive') this.rec.stop(); },
-  async exportWav() {
-    if (!this.song.tracks.length) return UI.toast('There is nothing to export yet.');
-    const folder = await UI.pickFolder(App.conf('music_out', App.boot.pictures)); if (!folder) return;
-    App.setConf('music_out', folder); UI.toast('Mixing down…');
-    const r = await upload('music_export', { path: folder + '\\' + this.song.name + '.wav' }, encodeWav(await renderSong(this.song, Player.bufs)));
+  exportWav() { return this.exportAudio('.wav'); },
+  async outFolder() { if (!this.song.tracks.length) { UI.toast('There is nothing to export yet.'); return null; } const f = await UI.pickFolder(App.conf('music_out', App.boot.pictures)); if (f) App.setConf('music_out', f); return f; },
+  async exportAudio(ext) {
+    const folder = await this.outFolder(); if (!folder) return; UI.toast('Mixing down\u2026');
+    const r = await upload('music_export', { path: folder + '\\' + this.song.name + ext }, encodeWav(await renderSong(this.song, Player.bufs)));
     UI.toast('Saved ' + r.path); api('fs_reveal', { path: r.path }).catch(() => {});
+  },
+  /* every track on its own, for mixing somewhere else */
+  async exportStems() {
+    const folder = await this.outFolder(); if (!folder) return; let last;
+    for (const tr of this.song.tracks) { UI.toast('Rendering ' + tr.name + '\u2026'); const solo = { ...this.song, tracks: this.song.tracks.map(t => ({ ...t, mute: false, solo: t === tr })) }; last = await upload('music_export', { path: `${folder}\\${this.song.name} - ${tr.name.replace(/[\\/:*?"<>|]/g, '')}.wav` }, encodeWav(await renderSong(solo, Player.bufs))); }
+    UI.toast(this.song.tracks.length + ' stems saved'); api('fs_reveal', { path: last.path }).catch(() => {});
+  },
+  async exportMidi() {
+    if (!this.song.tracks.some(t => t.type !== 'audio')) return UI.toast('MIDI holds notes, so it needs at least one drums, bass, chords or melody part.');
+    const folder = await this.outFolder(); if (!folder) return; const r = await upload('music_export', { path: folder + '\\' + this.song.name + '.mid' }, midiFile(this.song)); UI.toast('Saved ' + r.path); api('fs_reveal', { path: r.path }).catch(() => {});
+  },
+  exportMenu(e) {
+    const r = e.currentTarget.getBoundingClientRect(), a = (label, ext) => ({ label, run: () => this.exportAudio(ext).catch(UI.error) });
+    UI.menu(r.right - 250, r.bottom + 4, [a('Song as WAV (best quality)', '.wav'), a('Song as MP3 (small, plays anywhere)', '.mp3'), a('Song as FLAC (lossless, smaller)', '.flac'), a('Song as OGG', '.ogg'), '-', { label: 'Each track as its own WAV (stems)', run: () => this.exportStems().catch(UI.error) }, { label: 'Notes as a MIDI file', run: () => this.exportMidi().catch(UI.error) }]);
+  },
+  async importMidi() {
+    const path = await UI.pickFile(App.conf('music_dir', App.boot.pictures) + '\\x', ['.mid', '.midi']); if (!path) return; let m;
+    try { m = parseMidi(await (await fetch('/img/audio?path=' + encodeURIComponent(path))).arrayBuffer()); } catch (e) { return UI.toast('That MIDI file could not be read.', 'error'); }
+    this.edit(() => {
+      const s = this.song, per = m.tpq / 4, made = []; let last = 0; if (!s.tracks.length) s.bpm = clamp(Math.round(m.bpm), 40, 220); s.scale = 'chromatic';
+      for (const mt of m.tracks) {
+        if (mt.ch === 9) { const tr = { id: uid(), role: 'drums', type: 'drums', name: mt.name || 'Drums', vol: .8, kit: 'studio', steps: {} }; for (const n of mt.notes) { const k = GM_FROM[n.n], st = Math.round(n.t / per); if (k) { (tr.steps[k] = tr.steps[k] || [])[st] = true; last = Math.max(last, st); } } if (Object.keys(tr.steps).length) made.push(tr); continue; }
+        const avg = mt.notes.reduce((a, n) => a + n.n, 0) / mt.notes.length, role = avg < 52 ? 'bass' : avg < 66 ? 'chords' : 'melody', lo = ROLES[role].base + keyOff(s);
+        const tr = { id: uid(), role, type: 'synth', name: mt.name || ROLES[role].name, vol: .8, preset: ROLES[role].preset, notes: mt.notes.map(n => { let k = n.n; while (k < lo) k += 12; while (k > lo + 24) k -= 12; return { s: Math.round(n.t / per), d: Math.max(1, Math.round(n.d / per)), n: k }; }) };
+        last = Math.max(last, ...tr.notes.map(n => n.s + n.d - 1)); made.push(tr);
+      }
+      s.bars = clamp(Math.max(s.bars, Math.ceil((last + 1) / STEPS)), 1, 400);
+      for (const tr of made) { tr.len = s.bars; for (const k of Object.keys(tr.steps || {})) tr.steps[k] = Array.from({ length: s.bars * STEPS }, (_, i) => !!tr.steps[k][i]); s.tracks.push(tr); }
+      if (!made.length) UI.toast('No notes were found in that MIDI file.'); else this.sel = made[0].id;
+    });
   },
   async rename() {
     const n = await UI.prompt('Rename Song', 'Song name', this.song.name); if (!n || n === this.song.name) return;
@@ -160,26 +203,71 @@ const Music = {
   },
   splitHere() { const tr = this.track(this.sel); if (!tr || tr.type !== 'audio') return UI.toast('Select an audio track, click where to split, then press Split.'); this.edit(() => { if (this.range) { this.split(tr, this.range.a); this.split(tr, this.range.b); } else this.split(tr, this.cursor); }); },
   trim() { const t = this.need(); if (!t || t.whole) return t && UI.toast('Drag across the part you want to keep.'); this.edit(() => { t.tr.clips = this.inside(t.tr, t.a, t.b); }); },
-  /* render each clip in the range through fn(channels, sampleRate, p0, p1), where p runs 0..1 across the whole range */
-  fx(name, fn, prep) {
-    const t = this.need(); if (!t) return;
-    this.edit(() => {
-      const clips = this.inside(t.tr, t.a, t.b), span = t.b - t.a || 1, slices = clips.map(c => { const src = Player.bufs.get(c.buf), i0 = Math.floor(c.off * src.sampleRate), n = Math.max(1, Math.min(src.length - i0, Math.round(c.dur * src.sampleRate))); return { c, sr: src.sampleRate, ch: Array.from({ length: src.numberOfChannels }, (_, k) => src.getChannelData(k).slice(i0, i0 + n)) }; });
-      const ctx = prep ? prep(slices) : null;
-      for (const s of slices) {
-        fn(s.ch, s.sr, (s.c.start - t.a) / span, (s.c.start + s.c.dur - t.a) / span, ctx);
-        const out = new AudioBuffer({ length: s.ch[0].length, numberOfChannels: s.ch.length, sampleRate: s.sr }); s.ch.forEach((d, k) => out.copyToChannel(d, k));
-        const id = uid(); Player.bufs.set(id, out); s.c.buf = id; s.c.off = 0; s.c.dur = out.duration;
-        if (name === 'Reverse') s.c.start = t.a + (t.b - (s.c.start + s.c.dur));
-      }
-    });
-    UI.toast(name + ' applied');
+  slice(c) {
+    const src = Player.bufs.get(c.buf), sr = src.sampleRate, i0 = Math.floor(c.off * sr), n = Math.max(1, Math.min(src.length - i0, Math.round(c.dur * sr))), out = new AudioBuffer({ length: n, numberOfChannels: src.numberOfChannels, sampleRate: sr });
+    for (let k = 0; k < src.numberOfChannels; k++) out.copyToChannel(src.getChannelData(k).subarray(i0, i0 + n), k); return out;
   },
-  fade(inward) { this.fx(inward ? 'Fade in' : 'Fade out', (ch, sr, p0, p1) => { for (const d of ch) for (let i = 0, n = d.length; i < n; i++) { const p = p0 + (p1 - p0) * i / n; d[i] *= inward ? p : 1 - p; } }); },
-  gain(db) { const g = 10 ** (db / 20); this.fx('Amplify', ch => { for (const d of ch) for (let i = 0; i < d.length; i++) d[i] = clamp(d[i] * g, -1, 1); }); },
-  async amplify() { const v = await UI.prompt('Amplify', 'Change in decibels (6 is about twice as loud, -6 about half)', '6'); if (v != null && isFinite(+v)) this.gain(+v); },
-  normalize() { this.fx('Normalize', (ch, sr, p0, p1, g) => { for (const d of ch) for (let i = 0; i < d.length; i++) d[i] *= g; }, sl => { let pk = 1e-6; for (const s of sl) for (const d of s.ch) for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i])); return .97 / pk; }); },
-  reverse() { this.fx('Reverse', ch => { for (const d of ch) d.reverse(); }); },
+  /* Run every clip in the selection through fn(buffer, p0, p1, ctx) -> buffer (may be async); p runs 0..1 across the selection.
+     scale says how much longer or shorter the result is, so later audio can be moved along. */
+  async process(name, fn, { scale = 1, prep, mirror } = {}) {
+    const t = this.need(); if (!t) return;
+    this.mark(); const clips = this.inside(t.tr, t.a, t.b), span = t.b - t.a || 1, slices = clips.map(c => ({ c, buf: this.slice(c) })), ctx = prep ? prep(slices.map(x => x.buf)) : null;
+    try {
+      for (const { c, buf } of slices) { const out = await fn(buf, (c.start - t.a) / span, (c.start + c.dur - t.a) / span, ctx), id = uid(); Player.bufs.set(id, out); c.start = mirror ? t.a + (t.b - (c.start + c.dur)) : t.a + (c.start - t.a) * scale; c.buf = id; c.off = 0; c.dur = out.duration; }
+    } catch (e) { this.step(this.undo, []); return UI.error(e); }
+    if (scale !== 1) { const d = span * scale - span; for (const k of t.tr.clips) if (!clips.includes(k) && k.start >= t.b - .001) k.start += d; if (this.range) this.range.b = t.a + span * scale; this.fit(); }
+    this.changed(); Player.refresh(); this.draw(); UI.toast(name + ' applied');
+  },
+  each(name, fn, opts) { return this.process(name, (buf, p0, p1, ctx) => { for (let k = 0; k < buf.numberOfChannels; k++) fn(buf.getChannelData(k), p0, p1, ctx); return buf; }, opts); },
+  /* an effect built from audio nodes, rendered offline */
+  nodes(name, build) { return this.process(name, buf => { const ctx = new OfflineAudioContext(buf.numberOfChannels, buf.length, buf.sampleRate), src = ctx.createBufferSource(); src.buffer = buf; build(ctx, src).connect(ctx.destination); src.start(); return ctx.startRendering(); }); },
+  /* an effect the engine computes (noise reduction, pitch, tempo) */
+  server(name, op, v, scale = 1) {
+    UI.toast(name + '\u2026');
+    return this.process(name, async buf => { const r = await fetch('/api/upload/music_process?' + new URLSearchParams({ op, v }), { method: 'POST', body: encodeWav(buf) }); if (!r.ok || !(r.headers.get('Content-Type') || '').includes('audio')) throw new Error((await r.json().catch(() => ({}))).error || name + ' failed'); return Player.ready().decodeAudioData(await r.arrayBuffer()); }, { scale });
+  },
+  async ask(title, label, def, min, max) { const v = await UI.prompt(title, label, String(def)); return v == null || v === '' || !isFinite(+v) ? null : clamp(+v, min, max); },
+  fade(inward) { this.each(inward ? 'Fade in' : 'Fade out', (d, p0, p1) => { for (let i = 0, n = d.length; i < n; i++) { const p = p0 + (p1 - p0) * i / n; d[i] *= inward ? p : 1 - p; } }); },
+  async amplify() { const v = await this.ask('Amplify', 'Change in decibels (6 is about twice as loud, -6 about half)', 6, -60, 40); if (v == null) return; const g = 10 ** (v / 20); this.each('Amplify', d => { for (let i = 0; i < d.length; i++) d[i] = clamp(d[i] * g, -1, 1); }); },
+  normalize() { this.each('Normalize', (d, p0, p1, g) => { for (let i = 0; i < d.length; i++) d[i] *= g; }, { prep: bufs => { let pk = 1e-6; for (const b of bufs) for (let k = 0; k < b.numberOfChannels; k++) { const d = b.getChannelData(k); for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i])); } return .97 / pk; } }); },
+  reverse() { this.each('Reverse', d => { d.reverse(); }, { mirror: true }); },
+  async filter(type) {
+    const low = type === 'lowpass', f = await this.ask(low ? 'Low-pass Filter' : 'High-pass Filter', low ? 'Remove everything above this frequency in Hz (muffles hiss and harshness)' : 'Remove everything below this frequency in Hz (removes rumble and hum)', low ? 4000 : 120, 20, 20000); if (f == null) return;
+    this.nodes(low ? 'Low-pass filter' : 'High-pass filter', (ctx, src) => { const a = ctx.createBiquadFilter(), b = ctx.createBiquadFilter(); a.type = b.type = type; a.frequency.value = b.frequency.value = f; src.connect(a); a.connect(b); return b; });
+  },
+  async echoFx() { const sec = await this.ask('Echo', 'Seconds between repeats', .3, .02, 2); if (sec == null) return; this.nodes('Echo', (ctx, src) => { const out = ctx.createGain(), d = ctx.createDelay(2.5), fb = ctx.createGain(); d.delayTime.value = sec; fb.gain.value = .45; src.connect(out); src.connect(d); d.connect(fb); fb.connect(d); d.connect(out); return out; }); },
+  reverbFx() { this.nodes('Reverb', (ctx, src) => { const out = ctx.createGain(), cv = ctx.createConvolver(), wet = ctx.createGain(); cv.buffer = Sound.impulse(ctx); wet.gain.value = .35; src.connect(out); src.connect(cv); cv.connect(wet); wet.connect(out); return out; }); },
+  compress() { this.nodes('Compressor', (ctx, src) => { const c = ctx.createDynamicsCompressor(), g = ctx.createGain(); c.threshold.value = -24; c.ratio.value = 4; c.attack.value = .005; c.release.value = .2; g.gain.value = 1.8; src.connect(c); c.connect(g); return g; }); },
+  async noiseProfile() {
+    const t = this.need(); if (!t || t.whole) return t && UI.toast('Drag across a stretch that holds only the noise (no talking or music), then choose this again.');
+    const c = t.tr.clips.find(k => k.start < t.b && k.start + k.dur > t.a); if (!c) return; const a = Math.max(c.start, t.a), b = Math.min(c.start + c.dur, t.b);
+    await upload('music_noise_profile', {}, encodeWav(this.slice({ ...c, off: c.off + a - c.start, dur: b - a }))); UI.toast('Noise profile taken. Now select the audio to clean and choose Noise Reduction.');
+  },
+  async denoise() { const v = await this.ask('Noise Reduction', 'Strength from 1 (gentle) to 10 (strong). Tip: take a noise profile first for a cleaner result.', 5, 1, 10); if (v != null) this.server('Noise reduction', 'denoise', v / 10); },
+  async pitch() { const v = await this.ask('Change Pitch', 'Semitones up (+) or down (-), keeping the length. 12 is one octave.', 2, -24, 24); if (v) this.server('Change pitch', 'pitch', v); },
+  async tempo() { const v = await this.ask('Change Tempo', 'Percent of the original speed, keeping the pitch (25 to 400)', 110, 25, 400); if (v && v !== 100) this.server('Change tempo', 'tempo', v / 100, 100 / v); },
+  async speed() { const v = await this.ask('Change Speed', 'Percent of the original speed. Pitch follows, like a tape or a record (25 to 400)', 90, 25, 400); if (v && v !== 100) this.server('Change speed', 'speed', v / 100, 100 / v); },
+  /* put a new piece of audio at the cursor of the selected audio track, or on a track of its own */
+  insert(buf, name) {
+    const tr = this.track(this.sel); if (!tr || tr.type !== 'audio') return this.addAudio(buf, name, null, this.cursor);
+    const id = uid(); Player.bufs.set(id, buf);
+    this.edit(() => { const t = this.cursor; this.split(tr, t); for (const k of tr.clips) if (k.start >= t - .001) k.start += buf.duration; tr.clips.push({ id: uid(), buf: id, start: t, off: 0, dur: buf.duration, gain: 1 }); this.range = { id: tr.id, a: t, b: t + buf.duration }; this.fit(); });
+  },
+  async generate(kind) {
+    const secs = await this.ask(kind, 'Length in seconds', 2, .05, 600); if (secs == null) return; let f = 440;
+    if (kind === 'Tone') { f = await this.ask('Tone', 'Frequency in Hz (440 is the note A)', 440, 20, 20000); if (f == null) return; }
+    const sr = 44100, buf = new AudioBuffer({ length: Math.round(secs * sr), numberOfChannels: 1, sampleRate: sr }), d = buf.getChannelData(0);
+    if (kind !== 'Silence') for (let i = 0; i < d.length; i++) d[i] = kind === 'Tone' ? .5 * Math.sin(2 * Math.PI * f * i / sr) : (Math.random() * 2 - 1) * .3;
+    this.insert(buf, kind);
+  },
+  fxItems() {
+    const i = (label, run) => ({ label, run });
+    return [i('Fade In', () => this.fade(true)), i('Fade Out', () => this.fade(false)), i('Amplify\u2026', () => this.amplify()), i('Normalize', () => this.normalize()), i('Compressor', () => this.compress()), '-',
+      i('Low-pass Filter\u2026', () => this.filter('lowpass')), i('High-pass Filter\u2026', () => this.filter('highpass')), i('Echo\u2026', () => this.echoFx()), i('Reverb', () => this.reverbFx()), i('Reverse', () => this.reverse()), '-',
+      i('Change Pitch\u2026', () => this.pitch()), i('Change Tempo\u2026', () => this.tempo()), i('Change Speed\u2026', () => this.speed()), '-', i('Get Noise Profile', () => this.noiseProfile().catch(UI.error)), i('Noise Reduction\u2026', () => this.denoise())];
+  },
+  genItems() { return ['Silence', 'Tone', 'Noise'].map(k => ({ label: k + '\u2026', run: () => this.generate(k) })); },
+  tapTempo() { const now = performance.now(), taps = this.taps = (this.taps || []).filter(t => now - t < 2500); taps.push(now); if (taps.length >= 3) { const bpm = clamp(Math.round(60000 * (taps.length - 1) / (now - taps[0])), 40, 220); if (bpm !== this.song.bpm) this.edit(() => { this.song.bpm = bpm; }, false); this.drawBar(); } },
   mixer(tr) {
     const S = (label, key, min, max, step, def) => UI.slider({ label, min, max, step, value: tr[key] ?? def, def, tip: MU_TIPS[key], oninput: v => { tr[key] = v; }, onchange: () => { this.changed(); this.draw(); } });
     this.mark(); UI.dialog({ title: tr.name + ' — Mixer', width: 380, body: h('div', {}, S('Volume', 'vol', 0, 1, .01, .8), S('Pan', 'pan', -1, 1, .01, 0), S('Bass', 'low', -18, 18, 1, 0), S('Treble', 'high', -18, 18, 1, 0), S('Room', 'room', 0, 1, .01, 0), S('Echo', 'echo', 0, 1, .01, 0)) });
@@ -187,7 +275,7 @@ const Music = {
   trackMenu(e, tr) {
     const r = e.currentTarget.getBoundingClientRect();
     UI.menu(r.left, r.bottom + 4, [{ label: 'Rename…', run: async () => { const n = await UI.prompt('Rename', 'Name', tr.name); if (n) this.edit(() => { tr.name = n; }); } }, { label: 'Mixer…', run: () => this.mixer(tr) },
-      tr.type === 'drums' || tr.type === 'synth' ? { label: 'Riff Length', sub: [1, 2, 4].map(n => ({ label: n + (n > 1 ? ' bars' : ' bar'), checked: tr.len === n, run: () => this.edit(() => { tr.len = n; if (tr.notes) tr.notes = tr.notes.filter(k => k.s < n * STEPS); }) })) } : null,
+      tr.type === 'drums' || tr.type === 'synth' ? { label: 'Riff Length', sub: [...new Set([1, 2, 4, 8, tr.len])].sort((a, b) => a - b).map(n => ({ label: n + (n > 1 ? ' bars' : ' bar'), checked: tr.len === n, run: () => this.edit(() => { tr.len = n; if (tr.notes) tr.notes = tr.notes.filter(k => k.s < n * STEPS); }) })) } : null,
       tr.type !== 'audio' ? { label: 'Clear Riff', run: () => this.edit(() => { if (tr.steps) tr.steps = {}; else tr.notes = []; }) } : null, { label: 'Duplicate', run: () => this.duplicate(tr) }, '-', { label: 'Delete', run: () => this.removeTrack(tr) }]);
   },
 
@@ -209,14 +297,15 @@ const Music = {
       adv ? this.tip(h('button', { class: 'tbtn' + (Player.loop ? ' on' : ''), onclick: () => { Player.loop = !Player.loop; Player.refresh(); this.drawBar(); } }, 'Loop'), 'loop') : null,
       adv ? this.tip(h('button', { class: 'tbtn' + (Player.metro ? ' on' : ''), onclick: () => { Player.metro = !Player.metro; this.drawBar(); } }, 'Click'), 'metro', 'Metronome') : null,
       this.posEl,
-      h('span', { class: 'mu-group' }, lab('Tempo', 'tempo'), num(s.bpm, 40, 220, v => this.edit(() => { s.bpm = v; }))),
+      h('span', { class: 'mu-group' }, lab('Tempo', 'tempo'), num(s.bpm, 40, 220, v => this.edit(() => { s.bpm = v; })), h('button', { class: 'tbtn', title: 'Tap this button in time with the beat you want', onclick: () => this.tapTempo() }, 'Tap')),
       h('span', { class: 'mu-group' }, lab('Key', 'key'), h('select', { onchange: e => this.retune(() => { s.key = e.target.selectedIndex; }) }, NOTE_NAMES.map((n, i) => h('option', { selected: i === s.key }, n))),
         this.tip(h('select', { onchange: e => this.retune(() => { s.scale = e.target.value; }) }, Object.entries(SCALE_NAMES).filter(([k]) => adv || k !== 'chromatic' || s.scale === k).map(([k, l]) => h('option', { value: k, selected: k === s.scale }, l))), 'scale', 'Scale')),
       h('span', { class: 'mu-group' }, lab('Bars', 'bars'), adv ? num(s.bars, 1, 400, v => this.edit(() => { s.bars = v; })) : h('select', { onchange: e => this.edit(() => { s.bars = +e.target.value; this.fit(); }) }, [...new Set([4, 8, 16, s.bars])].sort((a, b) => a - b).map(n => h('option', { selected: n === s.bars }, n)))),
-      h('span', { class: 'tb-fill' }),
+      adv ? h('span', { class: 'mu-group' }, lab('Swing', 'swing'), num(Math.round((s.swing || 0) * 100), 0, 70, v => this.edit(() => { s.swing = v / 100; }))) : null,
+      h('span', { class: 'tb-fill' }), this.meterEl = h('span', { class: 'mu-meter', title: 'Output level' }, h('i')),
       h('button', { class: 'tbtn', title: 'Undo (Ctrl+Z)', disabled: !this.undo.length, onclick: () => this.step(this.undo, this.redo) }, '↶'), h('button', { class: 'tbtn', title: 'Redo (Ctrl+Y)', disabled: !this.redo.length, onclick: () => this.step(this.redo, this.undo) }, '↷'),
       h('button', { class: 'tbtn mu-name', title: 'Your songs', onclick: e => this.songsMenu(e) }, s.name + '  ▾'),
-      h('button', { class: 'btn', title: 'Mix the song down to a .wav file', onclick: () => this.exportWav().catch(UI.error) }, 'Export'));
+      h('button', { class: 'btn', title: 'Save the song as WAV, MP3, FLAC or OGG, as separate tracks, or as MIDI', onclick: e => this.exportMenu(e) }, 'Export  \u25be'));
   },
   adders(big) {
     const b = (label, tipText, run) => { const el = h('button', { class: 'btn' + (big ? ' big' : ''), onclick: run }, label); el.dataset.tip = tipText; el.dataset.tipName = label.replace(/^\+\s*/, ''); return el; };
@@ -225,18 +314,20 @@ const Music = {
       b('+ Audio file', 'Bring in a recording or a song from this computer.', () => this.importAudio())];
   },
   drawTools() {
-    const adv = !Modes.beginner, t = (label, title, run) => h('button', { class: 'tbtn', title, onclick: run }, label);
+    const adv = !Modes.beginner, t = (label, title, run) => h('button', { class: 'tbtn', title, onclick: run }, label), menu = (label, title, items) => h('button', { class: 'tbtn', title, onclick: e => { const r = e.currentTarget.getBoundingClientRect(); UI.menu(r.left, r.bottom + 4, items()); } }, label);
     this.tools.replaceChildren(h('span', { class: 'mu-lab' }, 'Add'), ...this.adders(), ...(adv ? [h('span', { class: 'mu-sep' }), h('span', { class: 'mu-lab' }, 'Edit audio'),
       t('Split', 'Split at the cursor or at both ends of the selection (S)', () => this.splitHere()), t('Cut', 'Cut the selection and close the gap (Ctrl+X)', () => this.cut()), t('Copy', 'Copy the selection (Ctrl+C)', () => this.copy()), t('Paste', 'Insert the copied audio at the cursor (Ctrl+V)', () => this.paste()),
       t('Delete', 'Delete the selection and close the gap (Delete)', () => this.remove(true)), t('Silence', 'Remove the selection but leave the gap', () => this.remove(false)), t('Trim', 'Keep only the selection', () => this.trim()),
-      h('span', { class: 'mu-sep' }), h('span', { class: 'mu-lab' }, 'Effects'), t('Fade in', 'Fade the selection in from silence', () => this.fade(true)), t('Fade out', 'Fade the selection out to silence', () => this.fade(false)), t('Amplify…', 'Make the selection louder or quieter', () => this.amplify()),
-      t('Normalize', 'Raise the selection to full volume without distorting', () => this.normalize()), t('Reverse', 'Play the selection backwards', () => this.reverse()),
+      h('span', { class: 'mu-sep' }), menu('Effects  \u25be', 'Effects for the selected audio', () => this.fxItems()), menu('Generate  \u25be', 'Insert silence, a test tone or noise at the cursor', () => this.genItems()),
+      h('span', { class: 'mu-sep' }), h('button', { class: 'tbtn' + (this.spec ? ' on' : ''), title: 'Show audio as a spectrogram: pitch from low (bottom) to high (top), brighter where it is louder', onclick: () => { this.spec = !this.spec; this.draw(); } }, 'Spectrogram'),
+      h('button', { class: 'tbtn' + (this.snap ? ' on' : ''), title: 'Snap the cursor, selections and clips to the beat grid (hold Alt to override)', onclick: () => { this.snap = !this.snap; this.drawTools(); } }, 'Snap'),
       h('span', { class: 'tb-fill' }), t('−', 'Zoom out', () => this.zoom(1 / 1.5)), t('+', 'Zoom in', () => this.zoom(1.5)), t('Fit', 'Show the whole song', () => this.zoom(0))] : []));
   },
   head(tr, board) {
     const sel = () => { if (this.sel !== tr.id) { this.sel = tr.id; this.clipSel = this.range = null; if (!board) this.draw(); } };
     return [h('i', { class: 'mu-dot' }), h('b', { class: 'mu-tname', title: tr.name, onclick: sel, ondblclick: async () => { const n = await UI.prompt('Rename', 'Name', tr.name); if (n) this.edit(() => { tr.name = n; }); } }, tr.name),
-      tr.type === 'synth' ? h('select', { class: 'mu-preset', title: 'Instrument', onchange: e => this.edit(() => { tr.preset = e.target.value; }, false) }, Object.entries(INSTR).map(([k, p]) => h('option', { value: k, selected: k === tr.preset }, p.name))) : null,
+      tr.type === 'synth' ? h('select', { class: 'mu-preset', title: 'Instrument', onchange: async e => { const v = e.target.value; if (v === 'sample') { if (!await this.pickSample(tr)) e.target.value = tr.preset; } else { this.edit(() => { tr.preset = v; }, false); Player.tap(tr, trackNotes(this.song, tr)[7]); } } }, Object.entries(INSTR).map(([k, p]) => h('option', { value: k, selected: k === tr.preset }, p.name))) : null,
+      tr.type === 'drums' ? h('select', { class: 'mu-preset', title: 'Drum kit', onchange: e => { this.edit(() => { tr.kit = e.target.value; }, false); Player.tap(tr, 'kick'); } }, Object.entries(KITS).map(([k, p]) => h('option', { value: k, selected: k === (tr.kit || 'studio') }, p.name))) : null,
       tr.type !== 'audio' ? this.tip(h('button', { class: 'tbtn', onclick: () => this.idea(tr) }, '🎲' + (board ? '  New idea' : '')), 'idea', 'New idea') : null,
       h('span', { class: 'tb-fill' }),
       h('button', { class: 'tbtn mu-m' + (tr.mute ? ' on' : ''), title: 'Mute', onclick: e => { tr.mute = !tr.mute; e.currentTarget.classList.toggle('on', tr.mute); if (board) e.currentTarget.textContent = tr.mute ? 'Muted' : 'On'; this.changed(); } }, board ? (tr.mute ? 'Muted' : 'On') : 'M'),
@@ -250,7 +341,8 @@ const Music = {
     const s = this.song, board = h('div', { class: 'mu-board' });
     if (!s.tracks.length) {
       board.append(h('div', { class: 'mu-empty' }, h('h2', {}, 'Make something'), h('p', {}, 'A song here is a few short riffs that loop together. Add them one at a time, or let Opia start you off and then change whatever you like.'),
-        h('button', { class: 'btn primary big', onclick: () => this.starter() }, '✨  Start me off'), h('div', { class: 'mu-or' }, 'or add a part yourself'), h('div', { class: 'mu-row' }, this.adders(true))));
+        h('button', { class: 'btn primary big', onclick: () => this.starter() }, '\u2728  Start me off'), h('div', { class: 'mu-or' }, 'or pick a style'), h('div', { class: 'mu-row' }, Object.entries(STYLES).map(([k, st]) => h('button', { class: 'btn', onclick: () => this.starter(k) }, st.name))),
+        h('div', { class: 'mu-or' }, 'or add a part yourself'), h('div', { class: 'mu-row' }, this.adders(true))));
       return this.stage.replaceChildren(board);
     }
     let bottom = 16;
@@ -292,7 +384,7 @@ const Music = {
         lane.onmousedown = e => this.laneDown(e, tr, lane);
         for (const c of tr.clips) {
           const buf = Player.bufs.get(c.buf), w = Math.max(2, c.dur * pps), cv = h('canvas', { width: Math.min(16000, Math.ceil(w)), height: 52 });
-          if (buf) drawWave(cv, buf, c.off, c.dur, ROLES.audio.color);
+          if (buf) { if (this.spec) drawSpec(cv, buf, c.buf, c.off, c.dur); else drawWave(cv, buf, c.off, c.dur, ROLES.audio.color); }
           lane.append(h('div', { class: 'tl-clip' + (c.id === this.clipSel ? ' sel' : ''), style: { left: c.start * pps + 'px', width: w + 'px' } }, h('div', { class: 'tl-grip', title: 'Drag to move this clip', onmousedown: e => this.clipDown(e, tr, c) }, buf ? tr.name : 'missing audio'), cv));
         }
         if (this.range && this.range.id === tr.id) lane.append(h('div', { class: 'tl-range', style: { left: this.range.a * pps + 'px', width: (this.range.b - this.range.a) * pps + 'px' } }));
@@ -314,7 +406,8 @@ const Music = {
     const scroll = h('div', { class: 'tl-scroll', onwheel: e => { if (e.ctrlKey) { e.preventDefault(); this.zoom(Math.exp(-e.deltaY * .01)); } } }, content);
     this.stage.replaceChildren(scroll); scroll.scrollLeft = keep[0]; scroll.scrollTop = keep[1]; this.frame();
   },
-  timeAt(e, lane) { return Math.max(0, (e.clientX - lane.getBoundingClientRect().left) / this.pps); },
+  snapTo(t, e) { const g = stepDur(this.song); return this.snap && !(e && e.altKey) ? Math.round(t / g) * g : t; },
+  timeAt(e, lane) { return this.snapTo(Math.max(0, (e.clientX - lane.getBoundingClientRect().left) / this.pps), e); },
   seek(e, lane) { this.cursor = this.timeAt(e, lane); this.range = null; if (Player.playing) Player.play(this.cursor); else Player.pos = this.cursor; this.drawTimeline(); },
   laneDown(e, tr, lane) {
     if (e.button || e.target.closest('.tl-grip')) return;
@@ -329,7 +422,7 @@ const Music = {
   },
   clipDown(e, tr, c) {
     const x0 = e.clientX, s0 = c.start, el = e.currentTarget.parentNode; let moved = false; e.preventDefault(); e.stopPropagation(); this.mark();
-    const mv = ev => { c.start = Math.max(0, s0 + (ev.clientX - x0) / this.pps); if (Math.abs(ev.clientX - x0) > 2) moved = true; el.style.left = c.start * this.pps + 'px'; };
+    const mv = ev => { c.start = this.snapTo(Math.max(0, s0 + (ev.clientX - x0) / this.pps), ev); if (Math.abs(ev.clientX - x0) > 2) moved = true; el.style.left = c.start * this.pps + 'px'; };
     const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); if (!moved) this.undo.pop(); else { this.fit(); this.changed(); Player.refresh(); } this.sel = tr.id; this.clipSel = c.id; this.range = null; this.draw(); };
     addEventListener('mousemove', mv); addEventListener('mouseup', up);
   },
@@ -347,6 +440,7 @@ const Music = {
     const t = Player.now(), sd = stepDur(this.song), step = Math.floor(t / sd + 1e-6);
     this.posEl.textContent = `Bar ${Math.floor(step / STEPS) + 1}.${Math.floor(step % STEPS / 4) + 1}   ${fmtTime(t)}`;
     for (const g of this.grids) g.tick(Player.playing ? step : -1);
+    if (this.meterEl) { const lv = Player.level(); this.meterEl.firstChild.style.width = Math.round(lv * 100) + '%'; this.meterEl.classList.toggle('hot', lv > .97); }
     if (this.headEl && this.headEl.isConnected) { this.headEl.style.transform = `translateX(${t * this.pps}px)`; this.headEl.style.opacity = Player.playing ? 1 : 0; this.curEl.style.transform = `translateX(${this.cursor * this.pps}px)`; }
   },
   keys: {
@@ -377,7 +471,8 @@ class RiffGrid {
     this.cols = tr.len * STEPS;
     const w = this.cols * this.cw, hh = this.rows.length * this.ch, r = devicePixelRatio || 1;
     this.cv.width = w * r; this.cv.height = hh * r; Object.assign(this.cv.style, { width: w + 'px', height: hh + 'px' });
-    this.keys.replaceChildren(...this.rows.map(o => h('div', { class: o.root ? 'root' : '', style: { height: this.ch + 'px', lineHeight: this.ch + 'px' }, onmousedown: () => Player.tap(tr, o.k) }, o.label)));
+    this.keys.replaceChildren(...this.rows.map(o => h('div', { class: (o.root ? 'root' : '') + (this.drums && tr.samples && tr.samples[o.k] ? ' own' : ''), title: this.drums ? 'Click to hear it. Right-click to use a sound of your own.' : null, style: { height: this.ch + 'px', lineHeight: this.ch + 'px' }, onmousedown: e => { if (!e.button) Player.tap(tr, o.k); },
+      oncontextmenu: this.drums ? e => { e.preventDefault(); UI.menu(e.clientX, e.clientY, [{ label: 'Use My Own Sound\u2026', run: () => Music.pickSample(tr, o.k) }, { label: 'Back to the Kit Sound', disabled: !(tr.samples && tr.samples[o.k]), run: () => Music.edit(() => { delete tr.samples[o.k]; }) }]); } : null }, o.label)));
     this.draw();
   }
   draw() {

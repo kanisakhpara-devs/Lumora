@@ -292,3 +292,5 @@ body.beginner .stars.big i { font-size: 20px; } body.beginner .mi { padding-top:
 .tl-play, .tl-cur { position: absolute; top: 0; bottom: 0; left: 340px; width: 2px; pointer-events: none; z-index: 2; } .tl-play { background: var(--hi); } .tl-cur { width: 1px; background: var(--gold); opacity: .8; }
 .mu-editor { flex: none; max-height: 46%; overflow: auto; background: var(--panel); border-top: 1px solid var(--line2); } .mu-editor:empty { display: none; } .mu-editor .rg { padding: 0 14px 14px; } .mu-ed-head { padding: 10px 14px; } .mu-hint { padding: 12px 16px; color: var(--dim); line-height: 1.5; }
 body.beginner .mu-bar { min-height: 60px; } body.beginner .mc-head { height: 52px; }
+.mu-meter { width: 70px; height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; flex: none; } .mu-meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4caf7a, #e8b86a); transition: width .06s linear; } .mu-meter.hot i { background: #e2574c; }
+.rg-keys .own { color: var(--gold2); font-weight: 800; } .rg-keys .own::after { content: " 2"; } .mu-preset { width: 96px; } .tl-head .mu-preset { width: 78px; }

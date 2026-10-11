@@ -102,7 +102,10 @@ class Handler(BaseHTTPRequestHandler):
                 fn = core.UPLOAD.get(u.path[12:])
                 if not fn:
                     return self._json({'error': 'unknown upload'}, 404)
-                return self._json({'result': fn(q, body)})
+                res = fn(q, body)
+                if isinstance(res, Binary):
+                    return self._send(200, res.data, res.ctype)
+                return self._json({'result': res})
             fn = core.API.get(u.path[5:]) if u.path.startswith('/api/') else None
             if not fn:
                 return self._json({'error': 'unknown api ' + u.path}, 404)

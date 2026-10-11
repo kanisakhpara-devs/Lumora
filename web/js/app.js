@@ -47,11 +47,10 @@ function registerCommands() {
     UI.dialog({ title: 'Keyboard Shortcuts', width: 560, body: h('div', { class: 'scroll' }, h('table', { class: 'tbl' }, ...extra, ...rows)) }); });
   C('mode.beginner', 'Beginner Mode', '', () => Modes.set('beginner', !Modes.beginner), { checked: () => Modes.beginner }); C('mode.trackpad', 'Trackpad-Friendly Controls', '', () => Modes.set('trackpad', !Modes.trackpad), { checked: () => Modes.trackpad });
   const M = (id, label, key, fn) => C('music.' + id, label, key, () => { if (App.module === 'music') fn(); }, { modules: ['music'] });
-  M('new', 'New Song', '', () => Music.save().then(() => Music.create())); M('rename', 'Rename Song…', '', () => Music.rename()); M('import', 'Import Audio…', '', () => Music.importAudio()); M('record', 'Record', '', () => Music.toggleRec()); M('export', 'Export as WAV…', '', () => Music.exportWav());
+  M('new', 'New Song', '', () => Music.save().then(() => Music.create())); M('rename', 'Rename Song…', '', () => Music.rename()); M('import', 'Import Audio…', '', () => Music.importAudio()); M('importmidi', 'Import MIDI…', '', () => Music.importMidi()); M('stems', 'Export Each Track (Stems)…', '', () => Music.exportStems()); M('midi', 'Export MIDI…', '', () => Music.exportMidi()); M('mp3', 'Export as MP3…', '', () => Music.exportAudio('.mp3')); M('record', 'Record', '', () => Music.toggleRec()); M('export', 'Export as WAV…', '', () => Music.exportWav());
   M('undo', 'Undo', '', () => Music.step(Music.undo, Music.redo)); M('redo', 'Redo', '', () => Music.step(Music.redo, Music.undo)); M('cut', 'Cut', '', () => Music.cut()); M('copy', 'Copy', '', () => Music.copy()); M('paste', 'Paste', '', () => Music.paste());
   M('delete', 'Delete', '', () => Music.remove(true)); M('silence', 'Silence', '', () => Music.remove(false)); M('split', 'Split', '', () => Music.splitHere()); M('trim', 'Trim to Selection', '', () => Music.trim());
-  M('fadein', 'Fade In', '', () => Music.fade(true)); M('fadeout', 'Fade Out', '', () => Music.fade(false)); M('amplify', 'Amplify…', '', () => Music.amplify()); M('normalize', 'Normalize', '', () => Music.normalize()); M('reverse', 'Reverse', '', () => Music.reverse());
-  for (const r of ['drums', 'bass', 'chords', 'melody']) M('add.' + r, 'Add ' + ROLES[r].name, '', () => Music.addTrack(r));
+    for (const r of ['drums', 'bass', 'chords', 'melody']) M('add.' + r, 'Add ' + ROLES[r].name, '', () => Music.addTrack(r));
   C('help.tour', 'Take the Tour', '', () => Tour.start());
   C('help.about', 'About Opia', '', () => UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`));
 }
@@ -61,10 +60,10 @@ function buildMenus() {
   const rating = { label: 'Set Rating', sub: [0, 1, 2, 3, 4, 5].map(r => ({ label: r ? '★'.repeat(r) : 'None', key: String(r), run: () => App.rate({ rating: r }) })) };
   const looks = [{ label: 'Theme', sub: looksMenu('theme') }, { label: 'Language', sub: looksMenu('lang') }, '-', 'mode.beginner', 'mode.trackpad', '-'];
   if (App.module === 'music') return App.buildMenus([
-    ['File', ['music.new', 'music.rename', '-', 'music.import', 'music.record', '-', 'music.export', '-', 'file.prefs']],
+    ['File', ['music.new', 'music.rename', '-', 'music.import', 'music.importmidi', 'music.record', '-', 'music.export', 'music.mp3', 'music.stems', 'music.midi', '-', 'file.prefs']],
     ['Edit', Modes.beginner ? ['music.undo', 'music.redo'] : ['music.undo', 'music.redo', '-', 'music.cut', 'music.copy', 'music.paste', 'music.delete', 'music.silence', '-', 'music.split', 'music.trim']],
     ['Track', ['music.add.drums', 'music.add.bass', 'music.add.chords', 'music.add.melody', 'music.import']],
-    ...(Modes.beginner ? [] : [['Effects', ['music.fadein', 'music.fadeout', '-', 'music.amplify', 'music.normalize', 'music.reverse']]]),
+    ...(Modes.beginner ? [] : [['Effects', () => Music.fxItems()], ['Generate', () => Music.genItems()]]),
     ['View', () => [...looks, 'view.full']],
     ['Help', ['help.tour', 'help.keys', 'help.about']],
   ]);

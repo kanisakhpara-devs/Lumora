@@ -3,6 +3,16 @@
 A local photo organizer and editor: Library, Develop, Map, Book, Slideshow, Print and Web modules.
 A Python engine handles the disk, catalogs, colour management and export; the interface renders every edit on the GPU (WebGL 2).
 
+## Two workspaces
+
+**Photos** is the organizer and editor described below. **Music** (the switch beside the logo) is a small studio:
+
+- *Beginner* is a jam board. Riff cards for drums, bass, chords and melody loop together; "Start me off" drafts a song in a style, and "New idea" rewrites one part to fit the rest. Notes are limited to the song's scale.
+- *Advanced* puts the same song on a timeline with a mixer, and gives audio tracks range editing (split, cut, copy, paste, trim), effects (fades, amplify, normalize, compressor, filters, echo, reverb, reverse, pitch, tempo, speed, noise reduction), a spectrogram view, and silence/tone/noise generators.
+- Import audio or MIDI, record from the microphone, use your own samples for any drum or as an instrument, and export WAV, MP3, FLAC, OGG, per-track stems or MIDI.
+
+All instruments and drum kits are synthesised in the app; no sample library is bundled. Songs are kept in `Pictures\Opia\Music\<song>`.
+
 ## Run it
 
 Double-click `Opia.bat`, or:
@@ -15,7 +25,7 @@ The app opens in its own window (Edge or Chrome in app mode). Closing the window
 
 Options: `--port N`, `--no-window` (open the printed URL yourself), `--catalog path\to\file.opiacat`, `--home folder`.
 
-Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread` (already installed on this machine).
+Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview` (already installed on this machine).
 
 ## Where things live
 
