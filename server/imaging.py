@@ -24,7 +24,13 @@ except ImportError:
 Image.MAX_IMAGE_PIXELS = None
 RAW_EXT = {'.cr2', '.cr3', '.nef', '.nrw', '.arw', '.srf', '.sr2', '.raf', '.orf', '.rw2', '.pef', '.dng', '.srw',
            '.3fr', '.erf', '.kdc', '.mrw', '.x3f', '.iiq', '.raw', '.rwl', '.dcr'}
-STD_EXT = {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp', '.bmp', '.gif', '.avif', '.jp2'}
+STD_EXT = {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp', '.bmp', '.gif', '.avif', '.jp2', '.psd'}
+try:                                   # iPhone photos
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+    STD_EXT |= {'.heic', '.heif'}
+except Exception:
+    pillow_heif = None
 IMG_EXT = RAW_EXT | STD_EXT
 SMART_SIZE = 2560
 _SRGB = ImageCms.createProfile('sRGB')

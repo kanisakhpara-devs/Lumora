@@ -100,7 +100,7 @@ function Progress(title) {
 
 const Exporter = {
   defaults: { dest: 'disk', folder: '', subfolder: '', addToCatalog: false, stack: false, existing: 'rename', naming: { enabled: false, template: '{name}', custom: '', start: 1 }, format: 'jpeg', quality: 90, colorSpace: 'sRGB', intent: 'relative',
-    tiffCompression: 'lzw', resize: { enabled: false, mode: 'long', value: 2048, w: 1920, h: 1080, dontEnlarge: true, dpi: 240 }, sharpen: { enabled: false, target: 'screen', amount: 'standard' }, metadata: 'all', removeLocation: false,
+    tiffCompression: 'lzw', resize: { enabled: false, mode: 'long', value: 2048, w: 1920, h: 1080, dontEnlarge: true, dpi: 240 }, sharpen: { enabled: false, target: 'screen', amount: 'standard' }, border: { enabled: false, size: 4, color: '#ffffff' }, metadata: 'all', removeLocation: false,
     watermark: { enabled: false, preset: 'Simple Copyright' }, post: 'reveal', app: '', ftp: { host: '', port: 21, user: '', pass: '', path: '', tls: false, passive: true }, disc: { label: 'Photos', recorder: 0, iso: false, isoFolder: '' } },
   builtin: {
     'Full-Sized JPEGs': {}, 'For Web \u2013 2048 px sRGB': { quality: 82, resize: { enabled: true, mode: 'long', value: 2048, dontEnlarge: true, dpi: 72 }, sharpen: { enabled: true, target: 'screen', amount: 'standard' } },
@@ -171,6 +171,7 @@ const Exporter = {
       { k: 'resize.dontEnlarge', label: "Don't Enlarge", t: 'check', show: o => raster(o) && o.resize.enabled }, { k: 'resize.dpi', label: 'Resolution (ppi)', t: 'number', min: 1, show: raster },
       { t: 'section', label: 'Output Sharpening', show: raster }, { k: 'sharpen.enabled', label: 'Sharpen For', t: 'check', show: raster }, { k: 'sharpen.target', label: 'Medium', t: 'select', opts: [['screen', 'Screen'], ['matte', 'Matte Paper'], ['glossy', 'Glossy Paper']], show: o => raster(o) && o.sharpen.enabled },
       { k: 'sharpen.amount', label: 'Amount', t: 'select', opts: [['low', 'Low'], ['standard', 'Standard'], ['high', 'High']], show: o => raster(o) && o.sharpen.enabled },
+      { t: 'section', label: 'Border', show: raster }, { k: 'border.enabled', label: 'Add a Border', t: 'check', show: raster }, { k: 'border.size', label: 'Width (% of long edge)', t: 'range', min: 1, max: 20, def: 4, show: o => raster(o) && o.border.enabled }, { k: 'border.color', label: 'Colour', t: 'select', opts: [['#ffffff', 'White'], ['#000000', 'Black'], ['#f4f1ea', 'Cream'], ['#808080', 'Grey']], show: o => raster(o) && o.border.enabled },
       { t: 'section', label: 'Metadata', show: raster }, { k: 'metadata', label: 'Include', t: 'select', opts: [['all', 'All Metadata'], ['all_except_camera', 'All Except Camera & Camera Raw Info'], ['copyright_contact', 'Copyright & Contact Info Only'], ['copyright', 'Copyright Only'], ['none', 'None']], show: raster },
       { k: 'removeLocation', label: 'Remove Location Info', t: 'check', show: o => raster(o) && o.metadata.startsWith('all') },
       { t: 'section', label: 'Watermarking', show: raster }, { k: 'watermark.enabled', label: 'Watermark', t: 'check', show: raster },
@@ -278,18 +279,19 @@ const Ext = {
 const Merge = {
   async dialog(kind) {
     const ids = App.selIds(); if (ids.length < 2) return UI.toast('Select two or more photos to merge');
-    const st = kind === 'pano' ? { projection: 'panorama', boundaryWarp: 0, fillEdges: false, autoCrop: true, stack: true, size: 3000 } : { align: true, fillEdges: false, saturation: 1, stack: true, size: 0 };
+    const st = kind === 'pano' ? { projection: 'panorama', boundaryWarp: 0, fillEdges: false, autoCrop: true, stack: true, size: 3000 } : kind === 'focus' ? { align: true, smooth: 9, stack: true, size: 0 } : { align: true, fillEdges: false, saturation: 1, stack: true, size: 0 };
     const img = h('img', { class: 'merge-prev' }), note = h('div', { class: 'fnote' }, 'Building preview\u2026');
     const prev = debounce(async () => { note.textContent = 'Building preview\u2026'; try { const r = await runJob(api('merge_preview', { ids, kind, opts: st }), 'Merge preview'); img.src = '/img/mergeprev/' + r.key + '?t=' + Date.now(); note.textContent = `Preview ${r.width} \u00d7 ${r.height}. The merged file is rendered at the chosen size.`; } catch (e) { note.textContent = e.message; img.removeAttribute('src'); } }, 350);
     const spec = kind === 'pano' ? [{ k: 'projection', label: 'Projection', t: 'select', opts: [['panorama', 'Spherical (hand-held / tripod sweeps)'], ['scans', 'Flat (scans, documents)']] },
       { k: 'boundaryWarp', label: 'Boundary Warp', t: 'range', min: 0, max: 100, def: 0 }, { k: 'fillEdges', label: 'Fill Edges (content-aware fill of the empty corners)', t: 'check' }, { k: 'autoCrop', label: 'Auto Crop', t: 'check', show: o => !o.fillEdges },
       { k: 'size', label: 'Source size (long edge)', t: 'select', opts: [[2000, '2000 px (fast)'], [3000, '3000 px'], [4500, '4500 px'], [0, 'Full resolution (slow)']] }, { k: 'stack', label: 'Create Stack', t: 'check' }]
+      : kind === 'focus' ? [{ k: 'align', label: 'Auto Align', t: 'check' }, { k: 'smooth', label: 'Blend smoothness', t: 'range', min: 3, max: 41, step: 2, def: 9 }, { k: 'size', label: 'Size', t: 'select', opts: [[0, 'Full resolution'], [3000, '3000 px'], [2000, '2000 px']] }, { k: 'stack', label: 'Create Stack', t: 'check' }]
       : [{ k: 'align', label: 'Auto Align', t: 'check' }, { k: 'fillEdges', label: 'Fill Edges (instead of cropping the alignment border)', t: 'check' }, { k: 'saturation', label: 'Saturation weight', t: 'range', min: 0, max: 2, step: 0.1, def: 1 },
         { k: 'size', label: 'Size', t: 'select', opts: [[0, 'Full resolution'], [3000, '3000 px'], [2000, '2000 px']] }, { k: 'stack', label: 'Create Stack', t: 'check' }];
     prev();
-    const ok = await UI.dialog({ title: kind === 'pano' ? `Panorama Merge \u2014 ${ids.length} photos` : `HDR Merge \u2014 ${ids.length} exposures`, width: 880, body: h('div', { class: 'split' }, h('div', { class: 'wm-left' }, img, note), h('div', { class: 'wm-right' }, UI.form(spec, st, prev))), buttons: [['Cancel', null], ['Merge', true, 'primary']] });
+    const ok = await UI.dialog({ title: kind === 'pano' ? `Panorama Merge \u2014 ${ids.length} photos` : kind === 'focus' ? `Focus Stack \u2014 ${ids.length} photos` : `HDR Merge \u2014 ${ids.length} exposures`, width: 880, body: h('div', { class: 'split' }, h('div', { class: 'wm-left' }, img, note), h('div', { class: 'wm-right' }, UI.form(spec, st, prev))), buttons: [['Cancel', null], ['Merge', true, 'primary']] });
     if (!ok) return;
-    const r = await runJob(api('merge_run', { ids, kind, opts: st }), kind === 'pano' ? 'Merging panorama' : 'Merging HDR');
+    const r = await runJob(api('merge_run', { ids, kind, opts: st }), kind === 'pano' ? 'Merging panorama' : kind === 'focus' ? 'Stacking focus' : 'Merging HDR');
     App.addPhotos(r.photos);
     if (st.stack) await App.reloadPhotos(ids);
     App.refreshList(true); Panels.refreshAll();

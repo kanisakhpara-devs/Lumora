@@ -120,6 +120,7 @@ const TIPS = {
     Catalog: 'Quick views of everything: all photos, your Quick Collection and the last import.',
     Folders: 'The folders on disk that hold your photos. Click one to see just its photos.',
     disk: 'Browse this computer and add a folder of photos to the catalog.',
+    dates: 'Your photos by the year and month they were taken. Click the arrow beside a year to open its months.',
     Collections: 'Albums you build yourself. A photo can be in many collections without being copied.',
     Histogram: 'A graph of the photo’s tones, dark on the left and bright on the right.',
     'Quick Develop': 'Fast adjustments without leaving the Library. They apply to every selected photo.',

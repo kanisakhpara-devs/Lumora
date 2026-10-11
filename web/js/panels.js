@@ -54,9 +54,9 @@ const Panels = {
   },
   build(el) {
     this.nav = h('div', { class: 'nav' }, this.navImg = h('img', { draggable: false }));
-    this.catB = h('div'); this.foldB = h('div'); this.diskB = h('div'); this.colB = h('div');
+    this.catB = h('div'); this.foldB = h('div'); this.diskB = h('div'); this.colB = h('div'); this.dateB = h('div');
     el.left.append(UI.panel('Navigator', this.nav), UI.panel('Catalog', this.catB), UI.panel('Folders', this.foldB, { tools: h('a', { title: 'Add folder to catalog', onclick: () => App.run('file.import') }, '+') }),
-      UI.panel('Local Disk', this.diskB, { closed: true, key: 'disk' }),
+      UI.panel('Dates', this.dateB, { closed: true, key: 'dates' }), UI.panel('Local Disk', this.diskB, { closed: true, key: 'disk' }),
       UI.panel('Collections', this.colB, { tools: h('a', { title: 'New collection', onclick: e => { const r = e.target.getBoundingClientRect(); UI.menu(r.left, r.bottom, Collections.newMenu(null)); } }, '+') }),
       h('div', { class: 'side-foot' }, h('button', { class: 'btn', onclick: () => App.run('file.import') }, 'Import…'), h('button', { class: 'btn', onclick: () => App.run('file.export') }, 'Export…')));
     this.histC = h('canvas', { width: 256, height: 96, class: 'histo' }); this.histInfo = h('div', { class: 'hist-info' });
@@ -64,7 +64,7 @@ const Panels = {
     el.right.append(UI.panel('Histogram', h('div', {}, this.histC, this.histInfo)), UI.panel('Quick Develop', this.qdB, { closed: true }), UI.panel('Keywording', this.kwB),
       UI.panel('Keyword List', this.klB, { tools: h('a', { title: 'Create keyword tag', onclick: () => Keywords.create(null) }, '+') }), UI.panel('Metadata', this.mdB),
       h('div', { class: 'side-foot adv' }, h('button', { class: 'btn', title: 'Copy develop settings to the other selected photos', onclick: () => App.run('dev.sync') }, 'Sync Settings'), h('button', { class: 'btn', onclick: () => App.run('meta.sync') }, 'Sync Metadata')));
-    const left = debounce(() => { this.drawCatalog(); this.drawFolders(); this.drawCollections(); }, 60);
+    const left = debounce(() => { this.drawCatalog(); this.drawFolders(); this.drawDates(); this.drawCollections(); }, 60);
     const right = debounce(() => { this.drawHist(); this.drawQuick(); Keywords.drawTags(); Keywords.drawList(); this.drawMeta(); Lib.toolbar(); }, 40);
     App.on('list', left); App.on('source', left); App.on('collections', left); App.on('meta', () => { left(); right(); });
     App.on('selection', right); App.on('keywords', right); App.on('thumb', right);
@@ -124,6 +124,17 @@ const Panels = {
       h('div', { class: 'dim' }, this.diskSel ? `${sel ? sel.files.length : 0} photo file(s) in ${this.diskSel}` : 'Pick a folder, then add it in place or import it.'),
       h('button', { class: 'btn', disabled: !this.diskSel, title: 'Catalog the photos where they are (no files are moved or copied)', onclick: () => Import.addFolder(this.diskSel) }, 'Add Folder'),
       h('button', { class: 'btn', disabled: !this.diskSel, onclick: () => Import.open(this.diskSel) }, 'Import…')));
+  },
+  /* browse by when the photos were taken: years, opening into months */
+  drawDates() {
+    const tree = new Map(), names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], rows = [], src = (ids, name) => ({ type: 'ids', ids, name });
+    for (const p of App.photos.values()) { if (!p.capture_time) continue; const d = new Date(p.capture_time * 1000), y = d.getFullYear(), m = d.getMonth(); if (!tree.has(y)) tree.set(y, new Map()); if (!tree.get(y).has(m)) tree.get(y).set(m, []); tree.get(y).get(m).push(p.id); }
+    for (const [y, months] of [...tree].sort((a, b) => b[0] - a[0])) {
+      const all = [...months.values()].flat(), key = 'date:' + y, open = this.open.has(key);
+      rows.push(this.row(0, { label: String(y), count: all.length, tw: open, on: srcIs(src(all, String(y))), onclick: e => { if (e.target.classList.contains('tw')) { this.tog(key); this.drawDates(); } else App.setSource(src(all, String(y))); } }));
+      if (open) for (const [m, ids] of [...months].sort((a, b) => b[0] - a[0])) rows.push(this.row(1, { label: names[m], count: ids.length, on: srcIs(src(ids, names[m] + ' ' + y)), onclick: () => App.setSource(src(ids, names[m] + ' ' + y)) }));
+    }
+    this.dateB.replaceChildren(...(rows.length ? rows : [h('div', { class: 'fnote' }, 'Photos with a capture date are listed here by year and month.')]));
   },
   drawCollections() {
     const out = [], target = App.cget('target', null);

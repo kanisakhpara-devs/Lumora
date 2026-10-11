@@ -29,6 +29,7 @@ const Music = {
     this.bar = h('div', { class: 'mu-bar' }); this.tools = h('div', { class: 'mu-tools' }); this.stage = h('div', { class: 'mu-stage' }); this.editor = h('div', { class: 'mu-editor' });
     el.center.append(this.bar, this.tools, this.stage, this.editor);
     Player.onstop = () => { if (this.song) this.drawBar(); };
+    document.addEventListener('keydown', e => { if (!this.live || App.module !== 'music' || e.ctrlKey || e.altKey || e.metaKey || $('#overlays').children.length || (e.target.matches && e.target.matches('input:not([type=range]),textarea,select'))) return; const i = 'ASDFGHJKL;'.indexOf(e.key.toUpperCase()); if (i < 0) return; e.preventDefault(); e.stopPropagation(); if (!e.repeat) this.strike(i); }, true);
     this.stage.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
     this.stage.addEventListener('drop', async e => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { this.addAudio(await Player.ready().decodeAudioData(await f.arrayBuffer()), f.name.replace(/\.[^.]+$/, ''), null, Modes.beginner ? 0 : this.cursor); } catch (err) { UI.toast(f.name + ' could not be read as audio.', 'error'); } } });
     App.on('prefs', k => { if (k === 'beginner') this.draw(); });
@@ -98,9 +99,9 @@ const Music = {
   idea(tr) { this.edit(() => Gen.fill(this.song, tr)); },
   removeTrack(tr) { this.edit(() => { this.song.tracks = this.song.tracks.filter(t => t !== tr); if (this.sel === tr.id) this.sel = null; this.range = null; }); },
   duplicate(tr) { this.edit(() => { const c = clone(tr); c.id = uid(); c.name += ' copy'; delete c.x; delete c.y; (c.clips || []).forEach(k => { k.id = uid(); }); this.song.tracks.splice(this.song.tracks.indexOf(tr) + 1, 0, c); this.sel = c.id; }); },
-  addAudio(buf, name, path, at = 0) {
+  addAudio(buf, name, path, at = 0, trim = 0) {
     const id = uid(); Player.bufs.set(id, buf); if (path) this.files.set(id, path);
-    this.edit(() => { const tr = { id: uid(), role: 'audio', type: 'audio', name, vol: .9, clips: [{ id: uid(), buf: id, start: at, off: 0, dur: buf.duration, gain: 1 }] }; this.song.tracks.push(tr); this.sel = tr.id; this.fit(); });
+    this.edit(() => { const tr = { id: uid(), role: 'audio', type: 'audio', name, vol: .9, clips: [{ id: uid(), buf: id, start: at, off: trim, dur: buf.duration - trim, gain: 1 }] }; this.song.tracks.push(tr); this.sel = tr.id; this.fit(); });
   },
   async importAudio() {
     const path = await UI.pickFile(App.conf('music_dir', App.boot.pictures) + '\\x', Object.keys({ '.wav': 1, '.mp3': 1, '.ogg': 1, '.flac': 1, '.m4a': 1, '.aac': 1, '.opus': 1, '.webm': 1 })); if (!path) return;
@@ -114,7 +115,8 @@ const Music = {
     mr.ondataavailable = e => parts.push(e.data);
     mr.onstop = async () => {
       stream.getTracks().forEach(t => t.stop()); Player.loop = wasLoop; Player.stop(); this.rec = null;
-      try { const buf = await Player.ready().decodeAudioData(await new Blob(parts).arrayBuffer()); this.addAudio(buf, 'Recording ' + (this.song.tracks.filter(t => t.role === 'audio').length + 1), null, at); } catch (e) { UI.toast('The recording could not be read.', 'error'); this.drawBar(); }
+      try { const buf = await Player.ready().decodeAudioData(await new Blob(parts).arrayBuffer()); const c = Player.ctx, late = Math.min(buf.duration / 2, (c.outputLatency || 0) + (c.baseLatency || 0));   // what you played against reached your ears this much late
+        this.addAudio(buf, 'Recording ' + (this.song.tracks.filter(t => t.role === 'audio').length + 1), null, at, late); } catch (e) { UI.toast('The recording could not be read.', 'error'); this.drawBar(); }
     };
     this.rec = mr; Player.loop = false; mr.start(); Player.play(at); this.drawBar();
   },
@@ -164,7 +166,7 @@ const Music = {
   },
   async songsMenu(e) {
     const r = e.currentTarget.getBoundingClientRect(), list = await api('music_list');
-    UI.menu(r.left, r.bottom + 4, [{ label: 'New Song', run: () => this.save().then(() => this.create()) }, { label: 'Rename Song…', run: () => this.rename() }, '-',
+    UI.menu(r.left, r.bottom + 4, [{ label: 'New Song', run: () => this.save().then(() => this.create()) }, { label: 'Rename Song…', run: () => this.rename() }, { label: 'Lyrics and Notes…', run: () => this.lyrics() }, '-',
       ...list.map(s => ({ label: s.name, checked: s.name === this.song.name, run: async () => { await this.save(); const d = await api('music_load', { name: s.name }); if (d) this.load(d); } }))]);
   },
   retune(change) {
@@ -184,7 +186,7 @@ const Music = {
     const c = tr.clips.find(k => k.id === this.clipSel); if (c) return { tr, a: c.start, b: c.start + c.dur };
     const e = Math.max(0, ...tr.clips.map(k => k.start + k.dur)); return e ? { tr, a: 0, b: e, whole: true } : null;
   },
-  split(tr, t) { const c = tr.clips.find(k => t > k.start + .001 && t < k.start + k.dur - .001); if (c) { tr.clips.push({ ...c, id: uid(), start: t, off: c.off + t - c.start, dur: c.start + c.dur - t }); c.dur = t - c.start; } },
+  split(tr, t) { const c = tr.clips.find(k => t > k.start + .001 && t < k.start + k.dur - .001); if (c) { tr.clips.push({ ...c, id: uid(), start: t, off: c.off + t - c.start, dur: c.start + c.dur - t, fi: 0 }); c.dur = t - c.start; c.fo = 0; } },
   inside(tr, a, b) { this.split(tr, a); this.split(tr, b); return tr.clips.filter(k => k.start >= a - .001 && k.start + k.dur <= b + .001); },
   need(msg = 'Select an audio track first, then drag across the part you want.') { const t = this.target(); if (!t) UI.toast(msg); return t; },
   remove(ripple) {
@@ -209,13 +211,15 @@ const Music = {
   },
   /* Run every clip in the selection through fn(buffer, p0, p1, ctx) -> buffer (may be async); p runs 0..1 across the selection.
      scale says how much longer or shorter the result is, so later audio can be moved along. */
-  async process(name, fn, { scale = 1, prep, mirror } = {}) {
+  async process(name, fn, { scale = 1, prep, mirror, repack } = {}) {
     const t = this.need(); if (!t) return;
-    this.mark(); const clips = this.inside(t.tr, t.a, t.b), span = t.b - t.a || 1, slices = clips.map(c => ({ c, buf: this.slice(c) })), ctx = prep ? prep(slices.map(x => x.buf)) : null;
+    let shift = 0; this.mark(); const clips = this.inside(t.tr, t.a, t.b), span = t.b - t.a || 1, slices = clips.map(c => ({ c, buf: this.slice(c) })), ctx = prep ? prep(slices.map(x => x.buf)) : null;
     try {
-      for (const { c, buf } of slices) { const out = await fn(buf, (c.start - t.a) / span, (c.start + c.dur - t.a) / span, ctx), id = uid(); Player.bufs.set(id, out); c.start = mirror ? t.a + (t.b - (c.start + c.dur)) : t.a + (c.start - t.a) * scale; c.buf = id; c.off = 0; c.dur = out.duration; }
+      slices.sort((x, y) => x.c.start - y.c.start);
+      for (const { c, buf } of slices) { const out = await fn(buf, (c.start - t.a) / span, (c.start + c.dur - t.a) / span, ctx), id = uid(), was = c.dur; Player.bufs.set(id, out); c.start = mirror ? t.a + (t.b - (c.start + c.dur)) : repack ? c.start + shift : t.a + (c.start - t.a) * scale; c.buf = id; c.off = 0; c.dur = out.duration; shift += out.duration - was; }
     } catch (e) { this.step(this.undo, []); return UI.error(e); }
-    if (scale !== 1) { const d = span * scale - span; for (const k of t.tr.clips) if (!clips.includes(k) && k.start >= t.b - .001) k.start += d; if (this.range) this.range.b = t.a + span * scale; this.fit(); }
+    const d = repack ? shift : span * scale - span;
+    if (Math.abs(d) > 1e-4) { for (const k of t.tr.clips) if (!clips.includes(k) && k.start >= t.b - .001) k.start += d; if (this.range) this.range.b = t.b + d; this.fit(); }
     this.changed(); Player.refresh(); this.draw(); UI.toast(name + ' applied');
   },
   each(name, fn, opts) { return this.process(name, (buf, p0, p1, ctx) => { for (let k = 0; k < buf.numberOfChannels; k++) fn(buf.getChannelData(k), p0, p1, ctx); return buf; }, opts); },
@@ -260,11 +264,71 @@ const Music = {
     if (kind !== 'Silence') for (let i = 0; i < d.length; i++) d[i] = kind === 'Tone' ? .5 * Math.sin(2 * Math.PI * f * i / sr) : (Math.random() * 2 - 1) * .3;
     this.insert(buf, kind);
   },
+  /* six-band tone control */
+  async equalizer() {
+    const bands = [60, 200, 600, 2000, 6000, 12000], gains = bands.map(() => 0);
+    const ok = await UI.dialog({ title: 'Equalizer', width: 400, body: h('div', {}, h('div', { class: 'fnote' }, 'Boost or cut each part of the sound, from the deepest (left of the list) to the brightest.'), bands.map((f, i) => UI.slider({ label: f < 1000 ? f + ' Hz' : f / 1000 + ' kHz', min: -18, max: 18, step: 1, value: 0, def: 0, oninput: v => { gains[i] = v; } }))), buttons: [['Cancel', null], ['Apply', true, 'primary']] });
+    if (ok && gains.some(Boolean)) this.nodes('Equalizer', (ctx, src) => bands.reduce((prev, f, i) => { const b = ctx.createBiquadFilter(); b.type = i === 0 ? 'lowshelf' : i === bands.length - 1 ? 'highshelf' : 'peaking'; b.frequency.value = f; b.Q.value = 1; b.gain.value = gains[i]; prev.connect(b); return b; }, src));
+  },
+  /* smooth over single-sample spikes (vinyl crackle, digital pops) */
+  declick() {
+    this.each('Remove clicks', d => { let sum = 0; for (let i = 1; i < d.length; i++) sum += (d[i] - d[i - 1]) ** 2; const thr = Math.max(.02, 8 * Math.sqrt(sum / d.length));
+      for (let i = 1; i < d.length - 1; i++) { const a = d[i] - d[i - 1], b = d[i] - d[i + 1]; if (Math.abs(a) > thr && Math.abs(b) > thr && a * b > 0) d[i] = (d[i - 1] + d[i + 1]) / 2; } });
+  },
+  /* shorten every pause longer than half a second to a short breath */
+  truncate() {
+    this.process('Truncate silence', buf => {
+      const sr = buf.sampleRate, n = buf.length, ch = Array.from({ length: buf.numberOfChannels }, (_, k) => buf.getChannelData(k)), quiet = i => ch.every(d => Math.abs(d[i]) < .01), min = Math.round(sr * .5), leave = Math.round(sr * .15), keep = [];
+      let start = 0;
+      for (let i = 0; i < n;) { if (!quiet(i)) { i++; continue; } let j = i; while (j < n && quiet(j)) j++; if (j - i > min) { keep.push([start, i + leave]); start = j - 0; } i = j + 1; }
+      keep.push([start, n]);
+      const len = keep.reduce((a, [x, y]) => a + Math.max(0, Math.min(n, y) - x), 0), out = new AudioBuffer({ length: Math.max(1, len), numberOfChannels: ch.length, sampleRate: sr });
+      ch.forEach((d, k) => { const o = out.getChannelData(k); let at = 0; for (const [x, y] of keep) { const e = Math.min(n, y); if (e > x) { o.set(d.subarray(x, e), at); at += e - x; } } });
+      return out;
+    }, { repack: true });
+  },
+  /* stretch the selected audio so its beat matches the song's tempo (or just report what its tempo seems to be) */
+  fitTempo(only) {
+    const t = this.need(); if (!t) return; const c = t.tr.clips.find(k => k.start < t.b && k.start + k.dur > t.a); if (!c) return;
+    const bpm = detectTempo(this.slice({ ...c, off: c.off + Math.max(0, t.a - c.start), dur: Math.min(c.start + c.dur, t.b) - Math.max(c.start, t.a) }));
+    if (!bpm) return UI.toast('No steady beat could be found in that audio.');
+    if (only) return UI.toast(`That sounds like about ${Math.round(bpm)} beats per minute (an estimate). The song is at ${this.song.bpm}.`);
+    const rate = this.song.bpm / bpm; if (Math.abs(rate - 1) < .01) return UI.toast('It already matches the song tempo.');
+    this.server(`Fit to tempo (${Math.round(bpm)} to ${this.song.bpm})`, 'tempo', rate, 1 / rate);
+  },
+  /* turn held chords into a rising run of single notes */
+  arpeggiate(tr) {
+    this.edit(() => { const by = new Map(); for (const n of tr.notes) (by.get(n.s) || by.set(n.s, []).get(n.s)).push(n); const out = [];
+      for (const [s, ns] of by) { if (ns.length < 2) { out.push(...ns); continue; } ns.sort((a, b) => a.n - b.n); const len = Math.max(...ns.map(n => n.d)); for (let i = 0; i * 2 < len; i++) out.push({ s: s + i * 2, d: 2, n: ns[i % ns.length].n }); }
+      tr.notes = out; });
+  },
+  addMarker() { UI.prompt('Marker', 'Name this point in the song', 'Chorus').then(n => { if (n) this.edit(() => { (this.song.marks = this.song.marks || []).push({ id: uid(), t: this.cursor, name: n }); }); }); },
+  lyrics() {
+    const ta = h('textarea', { rows: 16, value: this.song.lyrics || '', placeholder: 'Words, ideas, chords, to-dos\u2026' });
+    UI.dialog({ title: this.song.name + ' \u2014 Lyrics and Notes', width: 520, body: ta, buttons: [['Cancel', null], ['Save', true, 'primary']] }).then(ok => { if (ok) { this.song.lyrics = ta.value; this.changed(); } });
+  },
+  /* play the selected part from the computer keyboard (A S D F G H J K L ;) or a MIDI keyboard; while the song plays, what you play is written into the riff */
+  setLive(on) {
+    this.live = on; this.drawTools();
+    if (on && !this.midi && navigator.requestMIDIAccess) navigator.requestMIDIAccess().then(acc => { this.midi = acc; const hook = () => acc.inputs.forEach(inp => { inp.onmidimessage = e => { if ((e.data[0] & 240) === 144 && e.data[2] && this.live && App.module === 'music') this.strike(null, e.data[1]); }; }); hook(); acc.onstatechange = hook; }).catch(() => {});
+    if (on) UI.toast('Play with A S D F G H J K L ; or a MIDI keyboard. Press Play first to record what you play into the selected part.');
+  },
+  strike(idx, midi) {
+    const tr = this.track(this.sel) && this.track(this.sel).type !== 'audio' ? this.track(this.sel) : this.song.tracks.find(t => t.type !== 'audio'); if (!tr) return UI.toast('Add a drums, bass, chords or melody part to play.');
+    const notes = tr.type === 'drums' ? KIT.map(k => k[0]) : trackNotes(this.song, tr);
+    const what = midi == null ? notes[idx] : tr.type === 'drums' ? GM_FROM[midi] : notes.reduce((b, x) => (Math.abs((x - midi) % 12) + Math.abs(x - midi) / 100 < Math.abs((b - midi) % 12) + Math.abs(b - midi) / 100 ? x : b), notes[0]);
+    if (what == null) return; Player.tap(tr, what);
+    if (!Player.playing) return;
+    const st = Math.round(Player.now() / stepDur(this.song)) % (tr.len * STEPS); this.mark();
+    if (tr.type === 'drums') { const row = tr.steps[what] = (tr.steps[what] || []).slice(); while (row.length < tr.len * STEPS) row.push(false); row[st] = true; }
+    else if (!tr.notes.some(n => n.s === st && n.n === what)) tr.notes.push({ s: st, d: { bass: 2, chords: 4, melody: 2 }[tr.role], n: what });
+    this.changed(); for (const g of this.grids) if (g.tr === tr) { g.layout(); }
+  },
   fxItems() {
     const i = (label, run) => ({ label, run });
     return [i('Fade In', () => this.fade(true)), i('Fade Out', () => this.fade(false)), i('Amplify\u2026', () => this.amplify()), i('Normalize', () => this.normalize()), i('Compressor', () => this.compress()), '-',
       i('Low-pass Filter\u2026', () => this.filter('lowpass')), i('High-pass Filter\u2026', () => this.filter('highpass')), i('Echo\u2026', () => this.echoFx()), i('Reverb', () => this.reverbFx()), i('Reverse', () => this.reverse()), '-',
-      i('Change Pitch\u2026', () => this.pitch()), i('Change Tempo\u2026', () => this.tempo()), i('Change Speed\u2026', () => this.speed()), '-', i('Get Noise Profile', () => this.noiseProfile().catch(UI.error)), i('Noise Reduction\u2026', () => this.denoise())];
+      i('Change Pitch\u2026', () => this.pitch()), i('Change Tempo\u2026', () => this.tempo()), i('Change Speed\u2026', () => this.speed()), '-', i('Fit to Song Tempo', () => this.fitTempo()), i('Detect Tempo', () => this.fitTempo(true)), '-', i('Equalizer\u2026', () => this.equalizer()), i('Remove Clicks', () => this.declick()), i('Truncate Silence', () => this.truncate()), '-', i('Get Noise Profile', () => this.noiseProfile().catch(UI.error)), i('Noise Reduction\u2026', () => this.denoise())];
   },
   genItems() { return ['Silence', 'Tone', 'Noise'].map(k => ({ label: k + '\u2026', run: () => this.generate(k) })); },
   tapTempo() { const now = performance.now(), taps = this.taps = (this.taps || []).filter(t => now - t < 2500); taps.push(now); if (taps.length >= 3) { const bpm = clamp(Math.round(60000 * (taps.length - 1) / (now - taps[0])), 40, 220); if (bpm !== this.song.bpm) this.edit(() => { this.song.bpm = bpm; }, false); this.drawBar(); } },
@@ -276,6 +340,7 @@ const Music = {
     const r = e.currentTarget.getBoundingClientRect();
     UI.menu(r.left, r.bottom + 4, [{ label: 'Rename…', run: async () => { const n = await UI.prompt('Rename', 'Name', tr.name); if (n) this.edit(() => { tr.name = n; }); } }, { label: 'Mixer…', run: () => this.mixer(tr) },
       tr.type === 'drums' || tr.type === 'synth' ? { label: 'Riff Length', sub: [...new Set([1, 2, 4, 8, tr.len])].sort((a, b) => a - b).map(n => ({ label: n + (n > 1 ? ' bars' : ' bar'), checked: tr.len === n, run: () => this.edit(() => { tr.len = n; if (tr.notes) tr.notes = tr.notes.filter(k => k.s < n * STEPS); }) })) } : null,
+      tr.type === 'synth' ? { label: 'Arpeggiate Chords', run: () => this.arpeggiate(tr) } : null,
       tr.type !== 'audio' ? { label: 'Clear Riff', run: () => this.edit(() => { if (tr.steps) tr.steps = {}; else tr.notes = []; }) } : null, { label: 'Duplicate', run: () => this.duplicate(tr) }, '-', { label: 'Delete', run: () => this.removeTrack(tr) }]);
   },
 
@@ -315,11 +380,12 @@ const Music = {
   },
   drawTools() {
     const adv = !Modes.beginner, t = (label, title, run) => h('button', { class: 'tbtn', title, onclick: run }, label), menu = (label, title, items) => h('button', { class: 'tbtn', title, onclick: e => { const r = e.currentTarget.getBoundingClientRect(); UI.menu(r.left, r.bottom + 4, items()); } }, label);
-    this.tools.replaceChildren(h('span', { class: 'mu-lab' }, 'Add'), ...this.adders(), ...(adv ? [h('span', { class: 'mu-sep' }), h('span', { class: 'mu-lab' }, 'Edit audio'),
+    this.tools.replaceChildren(h('span', { class: 'mu-lab' }, 'Add'), ...this.adders(), h('button', { class: 'tbtn' + (this.live ? ' on' : ''), title: 'Play the selected part from your keyboard (A S D F G H J K L ;) or a MIDI keyboard. While the song plays, what you play is written into the riff.', onclick: () => this.setLive(!this.live) }, '\u2328  Play keys'), ...(adv ? [h('span', { class: 'mu-sep' }), h('span', { class: 'mu-lab' }, 'Edit audio'),
       t('Split', 'Split at the cursor or at both ends of the selection (S)', () => this.splitHere()), t('Cut', 'Cut the selection and close the gap (Ctrl+X)', () => this.cut()), t('Copy', 'Copy the selection (Ctrl+C)', () => this.copy()), t('Paste', 'Insert the copied audio at the cursor (Ctrl+V)', () => this.paste()),
       t('Delete', 'Delete the selection and close the gap (Delete)', () => this.remove(true)), t('Silence', 'Remove the selection but leave the gap', () => this.remove(false)), t('Trim', 'Keep only the selection', () => this.trim()),
       h('span', { class: 'mu-sep' }), menu('Effects  \u25be', 'Effects for the selected audio', () => this.fxItems()), menu('Generate  \u25be', 'Insert silence, a test tone or noise at the cursor', () => this.genItems()),
       h('span', { class: 'mu-sep' }), h('button', { class: 'tbtn' + (this.spec ? ' on' : ''), title: 'Show audio as a spectrogram: pitch from low (bottom) to high (top), brighter where it is louder', onclick: () => { this.spec = !this.spec; this.draw(); } }, 'Spectrogram'),
+      h('button', { class: 'tbtn', title: 'Name the point under the cursor, e.g. Verse or Chorus (M)', onclick: () => this.addMarker() }, 'Marker'),
       h('button', { class: 'tbtn' + (this.snap ? ' on' : ''), title: 'Snap the cursor, selections and clips to the beat grid (hold Alt to override)', onclick: () => { this.snap = !this.snap; this.drawTools(); } }, 'Snap'),
       h('span', { class: 'tb-fill' }), t('−', 'Zoom out', () => this.zoom(1 / 1.5)), t('+', 'Zoom in', () => this.zoom(1.5)), t('Fit', 'Show the whole song', () => this.zoom(0))] : []));
   },
@@ -377,6 +443,7 @@ const Music = {
     const ruler = h('div', { class: 'tl-lane tl-ruler', style: { width: W + 'px' }, onmousedown: e => this.seek(e, ruler) });
     for (let b = 0; b < s.bars; b++) ruler.append(h('span', { style: { left: b * barW + 'px', width: barW + 'px' } }, barW > 22 || b % 4 === 0 ? b + 1 : ''));
     ruler.append(h('i', { class: 'tl-end', style: { left: s.bars * barW + 'px' } }));
+    for (const m of s.marks || []) ruler.append(h('b', { class: 'tl-mark', title: 'Click to jump here. Right-click to remove.', style: { left: m.t * pps + 'px' }, onmousedown: e => { e.stopPropagation(); this.cursor = m.t; if (Player.playing) Player.play(m.t); else Player.pos = m.t; this.frame(); }, oncontextmenu: e => { e.preventDefault(); this.edit(() => { s.marks = s.marks.filter(k => k !== m); }); } }, m.name));
     const rows = [h('div', { class: 'tl-row top' }, h('div', { class: 'tl-head' }, h('span', { class: 'dim' }, 'Bars')), ruler)];
     for (const tr of s.tracks) {
       const lane = h('div', { class: 'tl-lane', style: { width: W + 'px' } });
@@ -385,7 +452,9 @@ const Music = {
         for (const c of tr.clips) {
           const buf = Player.bufs.get(c.buf), w = Math.max(2, c.dur * pps), cv = h('canvas', { width: Math.min(16000, Math.ceil(w)), height: 52 });
           if (buf) { if (this.spec) drawSpec(cv, buf, c.buf, c.off, c.dur); else drawWave(cv, buf, c.off, c.dur, ROLES.audio.color); }
-          lane.append(h('div', { class: 'tl-clip' + (c.id === this.clipSel ? ' sel' : ''), style: { left: c.start * pps + 'px', width: w + 'px' } }, h('div', { class: 'tl-grip', title: 'Drag to move this clip', onmousedown: e => this.clipDown(e, tr, c) }, buf ? tr.name : 'missing audio'), cv));
+          lane.append(h('div', { class: 'tl-clip' + (c.id === this.clipSel ? ' sel' : ''), style: { left: c.start * pps + 'px', width: w + 'px' } }, h('div', { class: 'tl-grip', title: 'Drag to move this clip', onmousedown: e => this.clipDown(e, tr, c) }, buf ? tr.name : 'missing audio'), cv,
+            h('div', { class: 'tl-fade in', style: { width: (c.fi || 0) * pps + 'px' } }), h('div', { class: 'tl-fade out', style: { width: (c.fo || 0) * pps + 'px' } }),
+            h('i', { class: 'tl-fh in', title: 'Drag right to fade this clip in', style: { left: (c.fi || 0) * pps + 'px' }, onmousedown: e => this.fadeDown(e, c, 'fi') }), h('i', { class: 'tl-fh out', title: 'Drag left to fade this clip out', style: { right: (c.fo || 0) * pps + 'px' }, onmousedown: e => this.fadeDown(e, c, 'fo') })));
         }
         if (this.range && this.range.id === tr.id) lane.append(h('div', { class: 'tl-range', style: { left: this.range.a * pps + 'px', width: (this.range.b - this.range.a) * pps + 'px' } }));
       } else {
@@ -420,6 +489,11 @@ const Music = {
     };
     addEventListener('mousemove', mv); addEventListener('mouseup', up); e.preventDefault();
   },
+  fadeDown(e, c, key) {
+    const x0 = e.clientX, v0 = c[key] || 0, dir = key === 'fi' ? 1 : -1; e.preventDefault(); e.stopPropagation(); this.mark();
+    const mv = ev => { c[key] = clamp(v0 + dir * (ev.clientX - x0) / this.pps, 0, c.dur / 2); };
+    const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); this.changed(); Player.refresh(); this.drawTimeline(); }; addEventListener('mousemove', mv); addEventListener('mouseup', up);
+  },
   clipDown(e, tr, c) {
     const x0 = e.clientX, s0 = c.start, el = e.currentTarget.parentNode; let moved = false; e.preventDefault(); e.stopPropagation(); this.mark();
     const mv = ev => { c.start = this.snapTo(Math.max(0, s0 + (ev.clientX - x0) / this.pps), ev); if (Math.abs(ev.clientX - x0) > 2) moved = true; el.style.left = c.start * this.pps + 'px'; };
@@ -428,7 +502,7 @@ const Music = {
   },
   drawEditor() {
     const tr = this.track(this.sel);
-    if (!tr || tr.type === 'audio') return this.editor.replaceChildren(h('div', { class: 'mu-hint' }, tr ? 'Drag across the waveform to select a range, click to place the cursor, and drag a clip by its name strip to move it. The Edit and Effects buttons act on the selection.' : 'Select a drums, bass, chords or melody track to edit its riff here. Click the bars in its lane to choose where it plays.'));
+    if (!tr || tr.type === 'audio') return this.editor.replaceChildren(h('div', { class: 'mu-hint' }, tr ? 'Drag across the waveform to select a range, click to place the cursor, and drag a clip by its name strip to move it. The Edit and Effects buttons act on the selection.' : 'Select a drums, bass, chords or melody track to edit its riff here. Click the bars in its lane to choose where it plays. In a note grid, Shift-click adds a whole chord.'));
     this.editor.replaceChildren(h('div', { class: 'mu-ed-head', style: { '--c': ROLES[tr.role].color } }, h('i', { class: 'mu-dot' }), h('b', {}, tr.name), h('span', { class: 'dim' }, `riff of ${tr.len} bar${tr.len > 1 ? 's' : ''}, repeating`)), this.grid(tr, true).el);
     this.editor.firstChild.style.setProperty('--c', ROLES[tr.role].color);
   },
@@ -447,7 +521,7 @@ const Music = {
     Space: () => Music.toggle(), R: () => Music.toggleRec(), L: () => { Player.loop = !Player.loop; Player.refresh(); Music.drawBar(); },
     'Ctrl+Z': () => Music.step(Music.undo, Music.redo), 'Ctrl+Y': () => Music.step(Music.redo, Music.undo), 'Ctrl+Shift+Z': () => Music.step(Music.redo, Music.undo),
     'Ctrl+X': () => Music.adv(() => Music.cut()), 'Ctrl+C': () => Music.adv(() => Music.copy()), 'Ctrl+V': () => Music.adv(() => Music.paste()), Delete: () => Music.adv(() => Music.remove(true)), Backspace: () => Music.adv(() => Music.remove(true)),
-    S: () => Music.adv(() => Music.splitHere()), Home: () => { Music.cursor = 0; Music.range = null; if (Player.playing) Player.play(0); else Player.pos = 0; },
+    S: () => Music.adv(() => Music.splitHere()), M: () => Music.adv(() => Music.addMarker()), Home: () => { Music.cursor = 0; Music.range = null; if (Player.playing) Player.play(0); else Player.pos = 0; },
     'Ctrl+A': () => Music.adv(() => { const t = Music.track(Music.sel); if (t && t.type === 'audio') { Music.clipSel = null; Music.range = null; const w = Music.target(); if (w) { Music.range = { id: t.id, a: w.a, b: w.b }; Music.drawTimeline(); } } }),
   },
   adv(fn) { if (!Modes.beginner) fn(); },
@@ -501,6 +575,7 @@ class RiffGrid {
     } else {
       const hit = tr.notes.find(n => n.n === key && c0 >= n.s && c0 < n.s + n.d);
       if (hit) tr.notes = tr.notes.filter(n => n !== hit);
+      else if (e.shiftKey && this.rows.length < 20) { for (const r of [r0, r0 - 2, r0 - 4]) if (r >= 0) { tr.notes.push({ s: c0, d: Math.min(4, this.cols - c0), n: this.rows[r].k }); Player.tap(tr, this.rows[r].k); } }   // Shift: a chord built on this note
       else { const n = { s: c0, d: Math.min({ bass: 2, chords: 4, melody: 2 }[tr.role], this.cols - c0), n: key }; let dragged = false; tr.notes.push(n); Player.tap(tr, key); move = ev => { const [c] = this.at(ev), d = clamp(c - c0 + 1, 1, this.cols - c0); if (c !== c0) dragged = true; if (dragged && d !== n.d) { n.d = d; this.draw(); } }; }
     }
     this.draw();

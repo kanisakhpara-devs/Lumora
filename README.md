@@ -25,7 +25,7 @@ The app opens in its own window (Edge or Chrome in app mode). Closing the window
 
 Options: `--port N`, `--no-window` (open the printed URL yourself), `--catalog path\to\file.opiacat`, `--home folder`.
 
-Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview` (already installed on this machine).
+Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview pillow-heif` (already installed on this machine).
 
 ## Where things live
 

@@ -178,6 +178,10 @@ def export_put(q, body):
         radius, pct = SHARPEN.get(sh.get('target', 'screen'), SHARPEN['screen'])
         pct = int(pct * {'low': 0.6, 'standard': 1.0, 'high': 1.5}.get(sh.get('amount', 'standard'), 1.0))
         im = im.filter(ImageFilter.UnsharpMask(radius=radius, percent=pct, threshold=2))
+    bd = st.get('border') or {}
+    if bd.get('enabled'):                   # a plain frame around the finished picture, sized as a share of its long edge
+        from PIL import ImageOps
+        im = ImageOps.expand(im, border=max(1, round(max(im.size) * float(bd.get('size', 4)) / 100)), fill=bd.get('color') or '#ffffff')
     space = st.get('colorSpace') or 'sRGB'
     if fmt in ('png', 'webp', 'avif') and space not in ('sRGB', 'AdobeRGB', 'DisplayP3', 'ProPhoto'):
         prof = icc.get_profile(space)

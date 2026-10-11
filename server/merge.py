@@ -149,15 +149,55 @@ def hdr(ids, opts, size):
     return rows, out
 
 
+def focus(ids, opts, size):
+    """Focus stacking: line the frames up, then build the picture from whichever frame is sharpest at each point."""
+    if len(ids) < 2:
+        raise ApiError('Select at least two photos focused at different distances')
+    rows, imgs = _load(ids, size)
+    shape = imgs[0].shape
+    if any(i.shape != shape for i in imgs):
+        raise ApiError('The photos must all have the same dimensions')
+    h, w = shape[:2]
+    mask = np.full((h, w), 255, np.uint8)
+    if opts.get('align', True):
+        k = 800 / max(h, w)
+        small = lambda im: cv2.resize(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+        ref = small(imgs[0])
+        aligned = [imgs[0]]
+        for im in imgs[1:]:
+            M = np.eye(2, 3, dtype=np.float32)
+            try:
+                _cc, M = cv2.findTransformECC(ref, small(im), M, cv2.MOTION_AFFINE, (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 60, 1e-5), None, 5)
+            except cv2.error:
+                pass                  # too little in common to line up: use the frame as it is
+            M[:, 2] /= k
+            flags = cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP
+            aligned.append(cv2.warpAffine(im, M, (w, h), flags=flags, borderMode=cv2.BORDER_REFLECT))
+            mask = cv2.bitwise_and(mask, cv2.warpAffine(np.full((h, w), 255, np.uint8), M, (w, h), flags=flags))
+        imgs = aligned
+    blur = max(3, int(opts.get('smooth', 9)) | 1)
+    detail = np.stack([cv2.GaussianBlur(np.abs(cv2.Laplacian(cv2.GaussianBlur(cv2.cvtColor(i, cv2.COLOR_BGR2GRAY), (3, 3), 0), cv2.CV_32F, ksize=3)), (blur, blur), 0) for i in imgs])
+    weights = (detail + 1e-6) ** 4          # strongly favour the sharpest frame, but blend at the joins
+    weights /= weights.sum(0)
+    out = np.clip(sum(wt[..., None] * im.astype(np.float32) for wt, im in zip(weights, imgs)), 0, 255).astype(np.uint8)
+    if (mask == 0).any():
+        x0, y0, x1, y1 = auto_crop(mask)
+        out = out[y0:y1, x0:x1]
+    return rows, out
+
+
+KINDS = {'pano': (pano, '-Pano'), 'hdr': (hdr, '-HDR'), 'focus': (focus, '-Focus')}
+
+
 def _run(job, ids, kind, opts):
     job.total = 3
     job.step('Merging %d photos' % len(ids))
     size = int(opts.get('size') or 3000)
-    rows, out = (pano if kind == 'pano' else hdr)(ids, opts, size)
+    rows, out = KINDS[kind][0](ids, opts, size)
     job.step('Writing file')
     first = rows[0]['path']
     folder = os.path.dirname(first) if os.path.isdir(os.path.dirname(first)) else core.cat().dir
-    base = os.path.splitext(os.path.basename(first))[0] + ('-Pano' if kind == 'pano' else '-HDR')
+    base = os.path.splitext(os.path.basename(first))[0] + KINDS[kind][1]
     target = files.unique_path(os.path.join(folder, base + '.jpg'))
     kw = {}
     try:
@@ -180,7 +220,7 @@ def merge_run(ids, kind='pano', opts=None):
 
 def _prev(job, ids, kind, opts):
     job.total = 1
-    _rows, out = (pano if kind == 'pano' else hdr)(ids, opts or {}, 900)
+    _rows, out = KINDS[kind][0](ids, opts or {}, 900)
     key = 'p%d' % (len(_preview) + 1)
     _preview.clear()
     _preview[key] = cv2.imencode('.jpg', out, [cv2.IMWRITE_JPEG_QUALITY, 88])[1].tobytes()

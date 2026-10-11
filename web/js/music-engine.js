@@ -175,8 +175,11 @@ class Rig {
       for (const c of tr.clips) {
         const buf = this.bufs.get(c.buf), skip = Math.max(0, from - c.start), len = Math.min(c.dur - skip, until - Math.max(c.start, from));
         if (!buf || len <= 0) continue;
-        const src = this.ctx.createBufferSource(), g = this.ctx.createGain(); src.buffer = buf; g.gain.value = c.gain ?? 1; src.connect(g); g.connect(this.strip(tr).in);
-        src.start(when + Math.max(0, c.start - from), c.off + skip, len); made.push(src);
+        const src = this.ctx.createBufferSource(), g = this.ctx.createGain(), G = c.gain ?? 1, st = when + Math.max(0, c.start - from), fi = c.fi || 0, fo = c.fo || 0, rest = c.dur - skip;
+        src.buffer = buf; src.connect(g); g.connect(this.strip(tr).in);
+        g.gain.setValueAtTime(fi > skip ? G * skip / fi : G, st); if (fi > skip) g.gain.linearRampToValueAtTime(G, st + fi - skip);          // the clip's own fade in
+        if (fo > 0 && len >= rest - .001) { g.gain.setValueAtTime(G, Math.max(st + Math.max(0, fi - skip), st + rest - fo)); g.gain.linearRampToValueAtTime(0, st + rest); }   // and fade out
+        src.start(st, c.off + skip, len); made.push(src);
       }
     }
     return made;
@@ -392,4 +395,13 @@ function parseMidi(ab) {
     p = end;
   }
   return out;
+}
+
+/* Roughly how fast a recording is: find how often its loud moments repeat. An estimate, best on music with a clear beat. */
+function detectTempo(buf) {
+  const d = buf.getChannelData(0), hop = 512, n = Math.floor(d.length / hop), env = new Float32Array(n), fps = buf.sampleRate / hop; let prev = 0;
+  for (let i = 0; i < n; i++) { let e = 0; for (let j = i * hop, end = j + hop; j < end; j++) e += d[j] * d[j]; e = Math.sqrt(e / hop); env[i] = Math.max(0, e - prev); prev = e; }
+  let best = 0, bpm = 0;
+  for (let b = 60; b <= 180; b += .5) { const lag = fps * 60 / b; let sum = 0; for (let i = 0; i + lag * 2 < n; i++) { const a = env[i]; if (a) sum += a * (env[Math.round(i + lag)] + .5 * env[Math.round(i + lag * 2)]); } if (sum > best) { best = sum; bpm = b; } }
+  return bpm;
 }

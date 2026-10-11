@@ -3,6 +3,36 @@
 
 const MODULES = [Lib, Dev, MapMod, Book, Slideshow, Print, WebMod];
 
+/* Your own keyboard shortcuts, kept in the app settings and laid over the built-in ones. */
+const Keymap = {
+  defaults: null,
+  apply() {
+    this.defaults = this.defaults || Object.fromEntries(Object.values(App.commands).map(c => [c.id, c.key]));
+    const map = App.conf('keymap', {}); for (const c of Object.values(App.commands)) c.key = map[c.id] ?? this.defaults[c.id];
+  },
+  async edit() {
+    const map = { ...App.conf('keymap', {}) }, cmds = Object.values(App.commands).filter(c => !/^(kwset|rate|music)\./.test(c.id)).sort((a, b) => a.label.localeCompare(b.label));
+    const rows = cmds.map(c => { const inp = h('input', { type: 'text', class: 'km-key', readOnly: true, value: map[c.id] ?? this.defaults[c.id], placeholder: 'none', onkeydown: e => { e.preventDefault(); e.stopPropagation(); if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return; inp.value = e.key === 'Backspace' || e.key === 'Delete' ? '' : App.keyName(e); map[c.id] = inp.value; } }); return h('tr', {}, h('td', {}, c.label.replace(/\u2026$/, '')), h('td', {}, inp)); });
+    const ok = await UI.dialog({ title: 'Customize Shortcuts', width: 560, body: h('div', {}, h('div', { class: 'fnote' }, 'Click a box and press the keys you want. Backspace clears it.'), h('div', { class: 'scroll' }, h('table', { class: 'tbl' }, rows))), buttons: [['Reset All', 'reset'], ['Cancel', null], ['Save', true, 'primary']] });
+    if (!ok) return;
+    const keep = ok === 'reset' ? {} : Object.fromEntries(Object.entries(map).filter(([id, k]) => k !== this.defaults[id]));
+    App.setConf('keymap', keep); this.apply(); buildMenus();
+    const used = Object.values(App.commands).map(c => c.key).filter(Boolean), clash = new Set(used.filter((k, i) => used.indexOf(k) !== i));
+    UI.toast(ok === 'reset' ? 'Shortcuts reset' : clash.size ? `Saved. ${clash.size} shortcut(s) are used twice: ${[...clash].slice(0, 4).join(', ')}` : 'Shortcuts saved');
+  },
+};
+async function findDuplicates() {
+  const r = await runJob(api('duplicates_find'), 'Finding duplicates');
+  if (!r.groups.length) return UI.toast(`No look-alike photos among the ${r.checked} checked`);
+  App.show('library'); App.setSource({ type: 'ids', ids: r.groups.flat(), name: 'Duplicates' }); Lib.setView('grid');
+  UI.toast(`${r.groups.length} set(s) of look-alike photos found. Reject (X) the ones you do not want.`);
+}
+async function pickSharpest() {
+  const ids = App.selIds(); if (ids.length < 2) return UI.toast('Select a few shots of the same thing first');
+  const score = await api('sharpness', { ids }), best = ids.reduce((a, b) => (score[b] > score[a] ? b : a));
+  App.select(best); App.rate({ flag: 1 }); UI.toast('Flagged the sharpest of the ' + ids.length);
+}
+
 function registerCommands() {
   const C = (...a) => App.cmd(...a), lib = { modules: ['library'] }, libdev = { modules: ['library', 'develop'] }, ld = v => () => { App.show('library'); Lib.setView(v); };
   C('file.import', 'Import Photos…', 'Ctrl+Shift+I', () => Import.open()); C('file.export', 'Export…', 'Ctrl+Shift+E', () => Exporter.dialog()); C('file.exportagain', 'Export with Previous', 'Ctrl+Alt+Shift+E', () => Exporter.again());
@@ -37,7 +67,8 @@ function registerCommands() {
   C('meta.xmpwrite', 'Save Metadata to XMP Sidecar', 'Ctrl+S', async () => { const r = await api('xmp_write', { ids: App.selIds() }); UI.toast(r.written.length + ' XMP sidecar file(s) written'); });
   C('meta.xmpread', 'Read Metadata from XMP Sidecar', '', async () => { const ids = App.selIds(), r = await api('xmp_read', { ids }); App.addPhotos(r.photos); App.setKeywords(r.keywords); App.emit('meta', ids); Render.thumbs(ids); if (App.module === 'develop') Dev.load(App.cur(), true); UI.toast(r.read + ' sidecar(s) read'); });
   C('meta.exif', 'Show All EXIF…', '', () => MetaUI.showExif()); C('meta.sync', 'Sync Metadata…', '', () => MetaUI.syncMeta()); C('meta.kwnew', 'New Keyword Tag…', '', () => Keywords.create(null));
-  C('merge.pano', 'Panorama…', 'Ctrl+M', () => Merge.dialog('pano')); C('merge.hdr', 'HDR…', 'Ctrl+H', () => Merge.dialog('hdr'));
+  C('merge.pano', 'Panorama…', 'Ctrl+M', () => Merge.dialog('pano')); C('merge.hdr', 'HDR…', 'Ctrl+H', () => Merge.dialog('hdr')); C('merge.focus', 'Focus Stack…', '', () => Merge.dialog('focus'));
+  C('photo.duplicates', 'Find Duplicates…', '', () => findDuplicates()); C('photo.sharpest', 'Pick the Sharpest', '', () => pickSharpest()); C('help.keymap', 'Customize Shortcuts…', '', () => Keymap.edit());
   C('people.find', 'Find Faces in These Photos', '', () => { App.show('library'); Lib.setView('people'); People.scan(); });
   C('filter.toggle', 'Enable Filters', 'Ctrl+L', () => { App.filter.on = !App.filter.on; App.refreshList(true); App.emit('filter'); }, { checked: () => App.filter.on }); C('filter.bar', 'Show Filter Bar', '', () => Lib.toggleFilterBar(), { checked: () => App.pref('filterBar', true) });
   C('paint.toggle', 'Painter (Spray Can)', 'Ctrl+Alt+K', () => { App.show('library'); Lib.setView('grid'); Painter.toggle(); });
@@ -65,28 +96,28 @@ function buildMenus() {
     ['Track', ['music.add.drums', 'music.add.bass', 'music.add.chords', 'music.add.melody', 'music.import']],
     ...(Modes.beginner ? [] : [['Effects', () => Music.fxItems()], ['Generate', () => Music.genItems()]]),
     ['View', () => [...looks, 'view.full']],
-    ['Help', ['help.tour', 'help.keys', 'help.about']],
+    ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
   if (Modes.beginner) return App.buildMenus([   // the short menus; Advanced has everything
     ['File', ['file.import', 'file.export', '-', 'file.prefs']],
     ['Edit', ['dev.undo', 'dev.redo', '-', 'edit.selectall', 'edit.selectnone']],
-    ['Photo', ['flag.pick', 'flag.none', 'flag.reject', rating, '-', 'photo.rotl', 'photo.rotr', '-', 'dev.auto', 'dev.reset', '-', 'col.new', 'photo.remove']],
+    ['Photo', ['flag.pick', 'flag.none', 'flag.reject', rating, '-', 'photo.rotl', 'photo.rotr', '-', 'dev.auto', 'dev.reset', '-', 'photo.sharpest', 'photo.duplicates', '-', 'col.new', 'photo.remove']],
     ['View', () => [...looks, 'view.grid', 'view.loupe', 'go.develop', '-', 'view.full']],
-    ['Help', ['help.tour', 'help.keys', 'help.about']],
+    ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
   App.buildMenus([
     ['File', () => ['file.newcatalog', 'file.catalogs', { label: 'Open Recent', sub: recent }, '-', 'file.import', 'file.tether', '-', 'file.export', 'file.exportagain', { label: 'Plug-in Extras', sub: () => Plugins.menu() }, '-', 'file.backup', 'file.optimize', 'file.plugins', '-', 'file.prefs']],
     ['Edit', ['dev.undo', 'dev.redo', '-', 'edit.selectall', 'edit.selectnone', '-', 'edit.identity', 'edit.watermarks', 'edit.templates', 'edit.metapresets', 'edit.keywordsets', 'prefs.editors']],
-    ['Library', ['col.new', 'col.smart', 'col.set', '-', 'col.quick', 'col.showquick', 'col.savequick', '-', 'filter.toggle', 'filter.bar', 'paint.toggle', '-', 'people.find', 'photo.smart', 'photo.smartdiscard', 'photo.locate', '-', 'photo.rename', 'photo.dng']],
+    ['Library', ['col.new', 'col.smart', 'col.set', '-', 'col.quick', 'col.showquick', 'col.savequick', '-', 'filter.toggle', 'filter.bar', 'paint.toggle', '-', 'people.find', 'photo.duplicates', 'photo.sharpest', 'photo.smart', 'photo.smartdiscard', 'photo.locate', '-', 'photo.rename', 'photo.dng']],
     ['Photo', () => ['photo.vcopy', '-', 'flag.pick', 'flag.none', 'flag.reject', rating,
       { label: 'Set Color Label', sub: [...Object.keys(LABELS).map(l => ({ label: l[0].toUpperCase() + l.slice(1), run: () => App.rate({ label: l }) })), { label: 'None', run: () => App.rate({ label: '' }) }] }, 'rate.auto', '-',
       'stack.group', 'stack.ungroup', 'stack.toggle', 'stack.auto', '-', 'photo.rotl', 'photo.rotr', 'photo.fliph', 'photo.flipv', '-',
-      { label: 'Edit In', sub: () => [...App.conf('editors', []).map(ed => ({ label: ed.name, run: () => Ext.editIn(ed) })), { label: 'Configure External Editors…', run: () => App.run('prefs.editors') }] }, { label: 'Photo Merge', sub: [{ label: 'Panorama…', key: 'Ctrl+M', run: () => App.run('merge.pano') }, { label: 'HDR…', key: 'Ctrl+H', run: () => App.run('merge.hdr') }] }, '-', 'photo.explorer', 'photo.remove']],
+      { label: 'Edit In', sub: () => [...App.conf('editors', []).map(ed => ({ label: ed.name, run: () => Ext.editIn(ed) })), { label: 'Configure External Editors…', run: () => App.run('prefs.editors') }] }, { label: 'Photo Merge', sub: [{ label: 'Panorama…', key: 'Ctrl+M', run: () => App.run('merge.pano') }, { label: 'HDR…', key: 'Ctrl+H', run: () => App.run('merge.hdr') }, { label: 'Focus Stack…', run: () => App.run('merge.focus') }] }, '-', 'photo.explorer', 'photo.remove']],
     ['Develop', ['dev.copy', 'dev.paste', 'dev.sync', 'dev.auto', 'dev.reset', '-', 'dev.snapshot', 'dev.preset', '-', 'dev.before', 'dev.reference', 'dev.proof', '-', 'tool.crop', 'tool.spot', 'tool.redeye', 'tool.brush', 'tool.linear', 'tool.radial', 'tool.guided']],
     ['Metadata', ['meta.kwnew', 'edit.keywordsets', '-', 'meta.sync', 'edit.metapresets', '-', 'meta.xmpwrite', 'meta.xmpread', 'meta.exif']],
     ['View', () => [...looks, 'view.grid', 'view.loupe', 'view.compare', 'view.survey', 'view.people', '-', 'view.info', 'view.panels', 'view.film', 'view.full']],
     ['Window', MODULES.map(m => 'mod.' + m.id)],
-    ['Help', ['help.tour', 'help.keys', 'help.about']],
+    ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
 }
 
@@ -100,7 +131,7 @@ async function start() {
   const t0 = performance.now();
   try {
     App.boot = await api('boot'); App.cfg = App.boot.config || {};
-    registerCommands(); Modes.init(); buildMenus();
+    registerCommands(); Keymap.apply(); Modes.init(); buildMenus();
     $('#looks').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); UI.menu(r.right - 220, r.bottom + 6, looksMenu()); };
     $('#brand').onclick = () => App.run('help.about');
     new MutationObserver(() => $('#brand').classList.toggle('busy', $('#activity').children.length > 0)).observe($('#activity'), { childList: true });
