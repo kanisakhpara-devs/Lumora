@@ -20,7 +20,7 @@ const MU_TIPS = {
 };
 
 const Music = {
-  id: 'music', name: 'Music', exclusive: true, song: null, files: new Map(), sel: null, clipSel: null, range: null, cursor: 0, pps: 40, undo: [], redo: [], grids: [], clipboard: null, rec: null, spec: false, snap: true,
+  id: 'music', name: 'Music', exclusive: true, song: null, files: new Map(), sel: null, clipSel: null, range: null, cursor: 0, pps: 40, undo: [], redo: [], grids: [], clipboard: null, rec: null, spec: false, snap: true, multi: new Set(),
 
   /* ---- song lifecycle */
   blank(name) { return { name, bpm: 100, key: 9, scale: 'minor', bars: 4, vol: .9, prog: null, tracks: [] }; },
@@ -47,7 +47,7 @@ const Music = {
     await this.load(this.blank(name)); if (!quiet) this.changed();
   },
   async load(data) {
-    Player.stop(); Player.bufs.clear(); this.files.clear(); this.undo = []; this.redo = []; this.sel = this.clipSel = this.range = null; this.cursor = Player.pos = 0;
+    Player.stop(); Player.bufs.clear(); this.files.clear(); this.undo = []; this.redo = []; this.sel = this.clipSel = this.range = null; this.multi.clear(); this.cursor = Player.pos = 0;
     const bufs = data.bufs || {}; delete data.bufs;
     this.song = Player.song = data;
     for (const [id, path] of Object.entries(bufs)) { try { Player.bufs.set(id, await this.decode(path)); this.files.set(id, path); } catch (e) { UI.toast('Could not open ' + path.split(/[\\/]/).pop(), 'error'); } }
@@ -70,7 +70,7 @@ const Music = {
   step(from, to) {
     if (!from.length) return; to.push(JSON.stringify(this.song));
     const name = this.song.name; this.song = Player.song = { ...JSON.parse(from.pop()), name };
-    if (!this.track(this.sel)) this.sel = null; this.range = this.clipSel = null; this.changed(); Player.refresh(); this.draw();
+    if (!this.track(this.sel)) this.sel = null; this.multi = new Set([...this.multi].filter(id => this.track(id))); this.range = this.clipSel = null; this.changed(); Player.refresh(); this.draw();
   },
   track(id) { return this.song.tracks.find(t => t.id === id); },
   get barDur() { return stepDur(this.song) * STEPS; },
@@ -97,7 +97,40 @@ const Music = {
     this.edit(() => { if (row) tr.samples = { ...(tr.samples || {}), [row]: id }; else { tr.sample = id; tr.preset = 'sample'; } }); Player.tap(tr, row || 60); return true;
   },
   idea(tr) { this.edit(() => Gen.fill(this.song, tr)); },
-  removeTrack(tr) { this.edit(() => { this.song.tracks = this.song.tracks.filter(t => t !== tr); if (this.sel === tr.id) this.sel = null; this.range = null; }); },
+  /* Which parts are selected. A plain click picks one; Ctrl-click adds or removes one; Shift-click adds. */
+  pick(tr, e) {
+    const m = this.multi, had = m.has(tr.id);
+    if (e && (e.ctrlKey || e.metaKey)) { had ? m.delete(tr.id) : m.add(tr.id); } else if (e && e.shiftKey) m.add(tr.id); else if (!had) { m.clear(); m.add(tr.id); }
+    this.sel = m.has(tr.id) ? tr.id : [...m].pop() || null; this.clipSel = this.range = null; this.marks();
+  },
+  picked() { return this.song.tracks.filter(t => this.multi.has(t.id)); },
+  /* show the selection on what is already drawn */
+  marks() { for (const el of $$('.mu-card, .tl-row', this.stage)) el.classList.toggle('sel', this.multi.has(el.dataset.id)); this.drawTools(); },
+  selectAll() { this.multi = new Set(this.song.tracks.map(t => t.id)); this.sel = this.sel || (this.song.tracks[0] || {}).id || null; this.marks(); },
+  selectNone() { if (this.multi.size) { this.multi.clear(); this.marks(); } },
+  removePicked() { const gone = new Set(this.picked()); if (!gone.size) return; this.edit(() => { this.song.tracks = this.song.tracks.filter(t => !gone.has(t)); this.multi.clear(); this.sel = null; this.range = this.clipSel = null; }); UI.toast(gone.size + (gone.size > 1 ? ' parts removed. Undo brings them back.' : ' part removed. Undo brings it back.')); },
+  duplicatePicked() { const src = this.picked(); if (!src.length) return; this.edit(() => { this.multi.clear(); for (const tr of src) { const c = clone(tr); c.id = uid(); c.name += ' copy'; delete c.x; delete c.y; (c.clips || []).forEach(k => { k.id = uid(); }); this.song.tracks.push(c); this.multi.add(c.id); this.sel = this.fresh = c.id; } }); },
+  mutePicked() { const p = this.picked(), on = p.some(t => !t.mute); this.edit(() => { for (const t of p) t.mute = on; }); },
+  ideaPicked() { this.edit(() => { for (const t of this.picked()) if (t.type !== 'audio') Gen.fill(this.song, t); }); },
+  /* empty the song but keep it: its name, tempo, key and place in your list stay */
+  clearSong() {
+    if (!this.song.tracks.length) return UI.toast('The song is already empty.');
+    Player.stop(); this.edit(() => { this.song.tracks = []; this.song.marks = []; this.multi.clear(); this.sel = null; this.range = this.clipSel = null; }); UI.toast('Song cleared. Undo (Ctrl+Z) brings everything back.');
+  },
+  /* make cards bigger or smaller; with several selected they all change */
+  resize(tr, z) { for (const t of this.multi.has(tr.id) && this.multi.size > 1 ? this.picked() : [tr]) t.z = clamp(z, .6, 3); },
+  sizeAll(f) { const list = this.multi.size > 1 ? this.picked() : this.song.tracks; for (const t of list) t.z = clamp((t.z || 1) * f, .6, 3); this.changed(); this.draw(); this.tidy(); },
+  /* after cards change size, nudge any that now overlap down out of the way */
+  tidy() {
+    const board = $('.mu-board', this.stage); if (!board) return; const placed = [];
+    for (const card of $$('.mu-card', board).sort((a, b) => this.track(a.dataset.id).y - this.track(b.dataset.id).y)) {
+      const tr = this.track(card.dataset.id), w = card.offsetWidth, hh = card.offsetHeight; let hit;
+      while ((hit = placed.find(p => tr.x < p.x + p.w + 12 && tr.x + w + 12 > p.x && tr.y < p.y + p.h + 12 && tr.y + hh + 12 > p.y))) tr.y = hit.y + hit.h + 16;
+      card.style.top = tr.y + 'px'; placed.push({ x: tr.x, y: tr.y, w, h: hh });
+    }
+    const pad = $('.mu-pad', board); if (pad) pad.style.top = Math.max(0, ...placed.map(p => p.y + p.h)) + 56 + 'px'; this.changed();
+  },
+  removeTrack(tr) { this.edit(() => { this.song.tracks = this.song.tracks.filter(t => t !== tr); this.multi.delete(tr.id); if (this.sel === tr.id) this.sel = null; this.range = null; }); },
   duplicate(tr) { this.edit(() => { const c = clone(tr); c.id = uid(); c.name += ' copy'; delete c.x; delete c.y; (c.clips || []).forEach(k => { k.id = uid(); }); this.song.tracks.splice(this.song.tracks.indexOf(tr) + 1, 0, c); this.sel = this.fresh = c.id; }); },
   addAudio(buf, name, path, at = 0, trim = 0) {
     const id = uid(); Player.bufs.set(id, buf); if (path) this.files.set(id, path);
@@ -166,7 +199,7 @@ const Music = {
   },
   async songsMenu(e) {
     const r = e.currentTarget.getBoundingClientRect(), list = await api('music_list');
-    UI.menu(r.left, r.bottom + 4, [{ label: 'New Song', run: () => this.save().then(() => this.create()) }, { label: 'Rename Song…', run: () => this.rename() }, { label: 'Lyrics and Notes…', run: () => this.lyrics() }, '-',
+    UI.menu(r.left, r.bottom + 4, [{ label: 'New Song', run: () => this.save().then(() => this.create()) }, { label: 'Rename Song…', run: () => this.rename() }, { label: 'Lyrics and Notes…', run: () => this.lyrics() }, { label: 'Clear Song', run: () => this.clearSong() }, '-',
       ...list.map(s => ({ label: s.name, checked: s.name === this.song.name, run: async () => { await this.save(); const d = await api('music_load', { name: s.name }); if (d) this.load(d); } }))]);
   },
   retune(change) {
@@ -381,7 +414,10 @@ const Music = {
   },
   drawTools() {
     const adv = !Modes.beginner, t = (label, title, run) => h('button', { class: 'tbtn', title, onclick: run }, label), menu = (label, title, items) => h('button', { class: 'tbtn', title, onclick: e => { const r = e.currentTarget.getBoundingClientRect(); UI.menu(r.left, r.bottom + 4, items()); } }, label);
-    this.tools.replaceChildren(h('span', { class: 'mu-lab' }, 'Add'), ...this.adders(), h('button', { class: 'tbtn' + (this.live ? ' on' : ''), title: 'Play the selected part from your keyboard (A S D F G H J K L ;) or a MIDI keyboard. While the song plays, what you play is written into the riff.', onclick: () => this.setLive(!this.live) }, '\u2328  Play keys'), ...(adv ? [h('span', { class: 'mu-sep' }), h('span', { class: 'mu-lab' }, 'Edit audio'),
+    this.tools.replaceChildren(h('span', { class: 'mu-lab' }, 'Add'), ...this.adders(), h('button', { class: 'tbtn' + (this.live ? ' on' : ''), title: 'Play the selected part from your keyboard (A S D F G H J K L ;) or a MIDI keyboard. While the song plays, what you play is written into the riff.', onclick: () => this.setLive(!this.live) }, '\u2328  Play keys'),
+      ...(adv ? [] : [h('span', { class: 'mu-sep' }), h('span', { class: 'mu-lab' }, 'Card size'), t('\u2212', 'Make the cards smaller (the selected ones, or all of them)', () => this.sizeAll(1 / 1.25)), t('+', 'Make the cards bigger (the selected ones, or all of them)', () => this.sizeAll(1.25))]),
+      ...(this.multi.size > 1 ? [h('span', { class: 'mu-sep' }), h('span', { class: 'mu-picked' }, h('b', {}, this.multi.size + ' selected'), t('New idea', 'Write a fresh riff for each selected part', () => this.ideaPicked()), t(this.picked().some(x => !x.mute) ? 'Mute' : 'Unmute', 'Silence or un-silence the selected parts', () => this.mutePicked()), t('Duplicate', 'Copy the selected parts (Ctrl+D)', () => this.duplicatePicked()), t('Delete', 'Remove the selected parts (Delete)', () => this.removePicked()), t('\u00d7', 'Clear the selection (Esc)', () => this.selectNone()))] : []),
+      ...(adv ? [h('span', { class: 'mu-sep' }), h('span', { class: 'mu-lab' }, 'Edit audio'),
       t('Split', 'Split at the cursor or at both ends of the selection (S)', () => this.splitHere()), t('Cut', 'Cut the selection and close the gap (Ctrl+X)', () => this.cut()), t('Copy', 'Copy the selection (Ctrl+C)', () => this.copy()), t('Paste', 'Insert the copied audio at the cursor (Ctrl+V)', () => this.paste()),
       t('Delete', 'Delete the selection and close the gap (Delete)', () => this.remove(true)), t('Silence', 'Remove the selection but leave the gap', () => this.remove(false)), t('Trim', 'Keep only the selection', () => this.trim()),
       h('span', { class: 'mu-sep' }), menu('Effects  \u25be', 'Effects for the selected audio', () => this.fxItems()), menu('Generate  \u25be', 'Insert silence, a test tone or noise at the cursor', () => this.genItems()),
@@ -391,7 +427,7 @@ const Music = {
       h('span', { class: 'tb-fill' }), t('−', 'Zoom out', () => this.zoom(1 / 1.5)), t('+', 'Zoom in', () => this.zoom(1.5)), t('Fit', 'Show the whole song', () => this.zoom(0))] : []));
   },
   head(tr, board) {
-    const sel = () => { if (this.sel !== tr.id) { this.sel = tr.id; this.clipSel = this.range = null; if (!board) this.draw(); } };
+    const sel = e => { if (board) return; const was = this.sel; this.pick(tr, e); if (this.sel !== was) this.draw(); };
     return [h('i', { class: 'mu-dot' }), h('b', { class: 'mu-tname', title: tr.name, onclick: sel, ondblclick: async () => { const n = await UI.prompt('Rename', 'Name', tr.name); if (n) this.edit(() => { tr.name = n; }); } }, tr.name),
       tr.type === 'synth' ? h('select', { class: 'mu-preset', title: 'Instrument', onchange: async e => { const v = e.target.value; if (v === 'sample') { if (!await this.pickSample(tr)) e.target.value = tr.preset; } else { this.edit(() => { tr.preset = v; }, false); Player.tap(tr, trackNotes(this.song, tr)[7]); } } }, Object.entries(INSTR).map(([k, p]) => h('option', { value: k, selected: k === tr.preset }, p.name))) : null,
       tr.type === 'drums' ? h('select', { class: 'mu-preset', title: 'Drum kit', onchange: e => { this.edit(() => { tr.kit = e.target.value; }, false); Player.tap(tr, 'kick'); } }, Object.entries(KITS).map(([k, p]) => h('option', { value: k, selected: k === (tr.kit || 'studio') }, p.name))) : null,
@@ -406,6 +442,7 @@ const Music = {
   /* Beginner: free-form board of cards */
   drawBoard() {
     const s = this.song, board = h('div', { class: 'mu-board' }), was = $('.mu-board', this.stage), keep = was ? [was.scrollLeft, was.scrollTop] : [0, 0];
+    board.onmousedown = e => this.band(e, board);
     if (!s.tracks.length) {
       board.append(h('div', { class: 'mu-empty' }, h('h2', {}, 'Make something'), h('p', {}, 'A song here is a few short riffs that loop together. Add them one at a time, or let Opia start you off and then change whatever you like.'),
         h('button', { class: 'btn primary big', onclick: () => this.starter() }, '\u2728  Start me off'), h('div', { class: 'mu-or' }, 'or pick a style'), h('div', { class: 'mu-row' }, Object.entries(STYLES).map(([k, st]) => h('button', { class: 'btn', onclick: () => this.starter(k) }, st.name))),
@@ -415,8 +452,9 @@ const Music = {
     let bottom = 16;
     for (const tr of s.tracks) {
       const body = tr.type === 'audio' ? this.audioCard(tr) : this.grid(tr, false).el;
-      const card = h('div', { class: 'mu-card' + (tr.id === this.sel ? ' sel' : ''), style: { '--c': ROLES[tr.role].color }, onmousedown: () => { this.sel = tr.id; $$('.mu-card', board).forEach(c => c.classList.toggle('sel', c === card)); } }, h('div', { class: 'mc-head', onmousedown: e => this.dragCard(e, tr, card) }, this.head(tr, true)), body);
-      card.style.setProperty('--c', ROLES[tr.role].color); board.append(card);
+      const card = h('div', { class: 'mu-card' + (this.multi.has(tr.id) ? ' sel' : ''), onmousedown: e => { if (!e.target.closest('.mc-head')) this.pick(tr, e.ctrlKey || e.metaKey || e.shiftKey ? e : null); } }, h('div', { class: 'mc-head', title: 'Drag to move. Ctrl-click or Shift-click to select several.', onmousedown: e => this.dragCard(e, tr, card) }, this.head(tr, true)), body,
+        h('i', { class: 'mc-size', title: 'Drag to make this card bigger or smaller. Double-click to reset.', onmousedown: e => this.sizeDown(e, tr), ondblclick: () => { this.resize(tr, 1); this.changed(); this.draw(); this.tidy(); } }));
+      card.style.setProperty('--c', ROLES[tr.role].color); board.append(card); card.fit = body.fit || (() => this.grids.find(g => g.tr === tr && !g.big).zoom());
       if (tr.x == null) { tr.x = 20; tr.y = -1; }
       card.dataset.id = tr.id;
     }
@@ -432,14 +470,36 @@ const Music = {
     root.scrollTop = Math.max(0, el.offsetTop - (root.clientHeight - el.offsetHeight) / 2); el.classList.add('fresh'); setTimeout(() => el.classList.remove('fresh'), 1600);
   },
   dragCard(e, tr, card) {
-    if (e.target.closest('button,select,input')) return;
-    const x0 = e.clientX - tr.x, y0 = e.clientY - tr.y, mv = ev => { tr.x = Math.max(0, ev.clientX - x0); tr.y = Math.max(0, ev.clientY - y0); Object.assign(card.style, { left: tr.x + 'px', top: tr.y + 'px' }); };
-    const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); this.changed(); }; addEventListener('mousemove', mv); addEventListener('mouseup', up); e.preventDefault();
+    if (e.target.closest('button,select,input') || e.button) return;
+    const mod = e.ctrlKey || e.metaKey || e.shiftKey; this.pick(tr, e); if (!this.multi.has(tr.id)) return;      // Ctrl-click took it out of the selection
+    const board = card.parentNode, group = this.picked().map(t => ({ t, x: t.x, y: t.y, el: $$('.mu-card', board).find(c => c.dataset.id === t.id) })), x0 = e.clientX, y0 = e.clientY; let moved = false;
+    const mv = ev => { const dx = ev.clientX - x0, dy = ev.clientY - y0; if (Math.abs(dx) + Math.abs(dy) > 3) moved = true; if (moved) for (const g of group) { g.t.x = Math.max(0, g.x + dx); g.t.y = Math.max(0, g.y + dy); if (g.el) Object.assign(g.el.style, { left: g.t.x + 'px', top: g.t.y + 'px' }); } };
+    const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); if (moved) this.changed(); else if (!mod && this.multi.size > 1) { this.multi.clear(); this.pick(tr); } };
+    addEventListener('mousemove', mv); addEventListener('mouseup', up); e.preventDefault();
+  },
+  /* drag the corner of a card to resize it */
+  sizeDown(e, tr) {
+    const x0 = e.clientX, z0 = tr.z || 1, board = $('.mu-board', this.stage); e.preventDefault(); e.stopPropagation(); if (!this.multi.has(tr.id)) this.pick(tr);
+    const mv = ev => { this.resize(tr, z0 + (ev.clientX - x0) / 260); for (const c of $$('.mu-card', board)) if (c.fit && this.multi.has(c.dataset.id)) c.fit(); };
+    const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); this.tidy(); }; addEventListener('mousemove', mv); addEventListener('mouseup', up);
+  },
+  /* drag across empty board to select every card the box touches */
+  band(e, board) {
+    if (e.button || (e.target !== board && !e.target.classList.contains('mu-pad'))) return;
+    const b = board.getBoundingClientRect(), ax = e.clientX - b.left + board.scrollLeft, ay = e.clientY - b.top + board.scrollTop, box = h('div', { class: 'mu-band' }), keep = e.ctrlKey || e.metaKey || e.shiftKey ? new Set(this.multi) : new Set(); let moved = false; board.append(box);
+    const mv = ev => {
+      const x = ev.clientX - b.left + board.scrollLeft, y = ev.clientY - b.top + board.scrollTop, l = Math.min(ax, x), t = Math.min(ay, y), w = Math.abs(x - ax), hh = Math.abs(y - ay); if (w + hh > 4) moved = true;
+      Object.assign(box.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: hh + 'px' }); this.multi = new Set(keep);
+      for (const c of $$('.mu-card', board)) { const tr = this.track(c.dataset.id), on = tr.x < l + w && tr.x + c.offsetWidth > l && tr.y < t + hh && tr.y + c.offsetHeight > t; if (on) this.multi.add(tr.id); c.classList.toggle('sel', this.multi.has(tr.id)); }
+    };
+    const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); box.remove(); if (!moved) this.multi = keep; this.sel = [...this.multi].pop() || null; this.marks(); };
+    addEventListener('mousemove', mv); addEventListener('mouseup', up); e.preventDefault();
   },
   audioCard(tr) {
-    const c = tr.clips[0], buf = c && Player.bufs.get(c.buf), cv = h('canvas', { width: 420, height: 64, class: 'mu-wave' });
-    if (buf) drawWave(cv, buf, c.off, c.dur, ROLES.audio.color);
-    return h('div', { class: 'mc-audio' }, cv, h('div', { class: 'fnote' }, buf ? `${fmtTime(Math.max(...tr.clips.map(k => k.start + k.dur)))} of audio, playing from the start. Switch to Advanced to cut, move or fade it.` : 'The audio file for this part is missing.'));
+    const c = tr.clips[0], buf = c && Player.bufs.get(c.buf), cv = h('canvas', { class: 'mu-wave' }), note = h('div', { class: 'fnote' }), box = h('div', { class: 'mc-audio' }, cv, note);
+    box.fit = () => { const z = tr.z || 1; cv.width = Math.round(420 * z); cv.height = Math.round(64 * z); Object.assign(cv.style, { width: cv.width + 'px', height: cv.height + 'px' }); box.style.width = cv.width + 'px'; if (buf) drawWave(cv, buf, c.off, c.dur, ROLES.audio.color); };
+    box.fit(); note.textContent = buf ? `${fmtTime(Math.max(...tr.clips.map(k => k.start + k.dur)))} of audio, playing from the start. Switch to Advanced to cut, move or fade it.` : 'The audio file for this part is missing.';
+    return box;
   },
   grid(tr, big) { const g = new RiffGrid(tr, big); this.grids.push(g); return g; },
 
@@ -473,7 +533,7 @@ const Music = {
           lane.append(cell);
         }
       }
-      rows.push(h('div', { class: 'tl-row' + (tr.id === this.sel ? ' sel' : ''), style: { '--c': ROLES[tr.role].color } }, h('div', { class: 'tl-head', onmousedown: e => { if (!e.target.closest('button,select,input') && this.sel !== tr.id) { this.sel = tr.id; this.clipSel = this.range = null; this.draw(); } } }, this.head(tr, false)), lane));
+      rows.push(h('div', { class: 'tl-row' + (this.multi.has(tr.id) || tr.id === this.sel ? ' sel' : ''), style: { '--c': ROLES[tr.role].color } }, h('div', { class: 'tl-head', title: 'Ctrl-click or Shift-click to select several tracks', onmousedown: e => { if (e.target.closest('button,select,input,.mu-tname')) return; const was = this.sel; this.pick(tr, e); if (this.sel !== was) this.draw(); } }, this.head(tr, false)), lane));
       rows[rows.length - 1].style.setProperty('--c', ROLES[tr.role].color); rows[rows.length - 1].dataset.id = tr.id;
     }
     this.headEl = h('div', { class: 'tl-play' }); this.curEl = h('div', { class: 'tl-cur' });
@@ -527,11 +587,13 @@ const Music = {
   keys: {
     Space: () => Music.toggle(), R: () => Music.toggleRec(), L: () => { Player.loop = !Player.loop; Player.refresh(); Music.drawBar(); },
     'Ctrl+Z': () => Music.step(Music.undo, Music.redo), 'Ctrl+Y': () => Music.step(Music.redo, Music.undo), 'Ctrl+Shift+Z': () => Music.step(Music.redo, Music.undo),
-    'Ctrl+X': () => Music.adv(() => Music.cut()), 'Ctrl+C': () => Music.adv(() => Music.copy()), 'Ctrl+V': () => Music.adv(() => Music.paste()), Delete: () => Music.adv(() => Music.remove(true)), Backspace: () => Music.adv(() => Music.remove(true)),
+    'Ctrl+X': () => Music.adv(() => Music.cut()), 'Ctrl+C': () => Music.adv(() => Music.copy()), 'Ctrl+V': () => Music.adv(() => Music.paste()), Delete: () => Music.del(), Backspace: () => Music.del(), Escape: () => Music.selectNone(), 'Ctrl+D': () => Music.duplicatePicked(),
     S: () => Music.adv(() => Music.splitHere()), M: () => Music.adv(() => Music.addMarker()), Home: () => { Music.cursor = 0; Music.range = null; if (Player.playing) Player.play(0); else Player.pos = 0; },
-    'Ctrl+A': () => Music.adv(() => { const t = Music.track(Music.sel); if (t && t.type === 'audio') { Music.clipSel = null; Music.range = null; const w = Music.target(); if (w) { Music.range = { id: t.id, a: w.a, b: w.b }; Music.drawTimeline(); } } }),
+    'Ctrl+A': () => { const t = Music.track(Music.sel); if (Modes.beginner || !t || t.type !== 'audio' || Music.multi.size > 1) return Music.selectAll(); { Music.clipSel = null; Music.range = null; const w = Music.target(); if (w) { Music.range = { id: t.id, a: w.a, b: w.b }; Music.drawTimeline(); } } },
   },
   adv(fn) { if (!Modes.beginner) fn(); },
+  /* Delete: a stretch of audio if one is selected, otherwise the selected parts */
+  del() { const t = this.track(this.sel); if (!Modes.beginner && t && t.type === 'audio' && (this.range || this.clipSel) && this.multi.size < 2) return this.remove(true); if (Modes.beginner || this.multi.size > 1) this.removePicked(); else this.remove(true); },
 };
 
 const fmtTime = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -540,11 +602,13 @@ const fmtTime = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStar
 class RiffGrid {
   constructor(tr, big) {
     this.tr = tr; this.big = big; this.drums = tr.type === 'drums'; this.step = -1;
-    this.cw = this.drums ? (big ? 30 : 22) : (big ? 16 : 10); this.ch = this.drums ? (big ? 26 : 22) : (big ? 15 : 11);
+    this.size();
     this.keys = h('div', { class: 'rg-keys' }); this.cv = h('canvas', { class: 'rg-cv', onmousedown: e => this.down(e) });
     this.el = h('div', { class: 'rg' + (this.drums ? ' drums' : '') }, this.keys, h('div', { class: 'rg-scroll' }, this.cv));
-    this.layout();
+    this.size(); this.layout();
   }
+  size() { const z = this.big ? 1 : this.tr.z || 1; this.cw = Math.max(4, Math.round((this.drums ? (this.big ? 30 : 22) : (this.big ? 16 : 10)) * z)); this.ch = Math.max(6, Math.round((this.drums ? (this.big ? 26 : 22) : (this.big ? 15 : 11)) * z)); this.el && this.el.style.setProperty('--z', Math.min(1.8, Math.max(.8, z))); }
+  zoom() { this.size(); this.layout(); }
   layout() {
     const tr = this.tr, song = Music.song;
     this.rows = this.drums ? KIT.filter(([k], i) => this.big || !Modes.beginner || i < 4 || (tr.steps[k] || []).some(Boolean)).map(([k, label]) => ({ k, label }))
