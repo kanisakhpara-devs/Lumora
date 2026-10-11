@@ -303,3 +303,10 @@ body.beginner .mu-bar { min-height: 60px; } body.beginner .mc-head { height: 52p
 .mu-card.sel { box-shadow: 0 0 0 2px var(--c), 0 8px 24px var(--shadow); } .mu-band { position: absolute; border: 1px solid var(--gold); background: color-mix(in srgb, var(--gold) 16%, transparent); border-radius: 4px; pointer-events: none; z-index: 5; }
 .mu-picked { display: flex; align-items: center; gap: 4px; padding: 2px 6px 2px 12px; border-radius: 999px; background: var(--sel); } .mu-picked b { color: var(--gold2); margin-right: 4px; white-space: nowrap; }
 .rg-keys { font-size: calc(9.5px * var(--z, 1)); } .rg.drums .rg-keys { font-size: calc(11.5px * var(--z, 1)); width: calc(62px * var(--z, 1)); } .rg:not(.drums) .rg-keys { width: calc(34px * var(--z, 1)); }
+/* ---- Opia Music: its own mark (ring with three bars) and coral accent */
+.lg-bars { display: none; fill: none; stroke: #ff5a3c; stroke-width: 3.84; stroke-linecap: round; } .lg-bars path { transform-box: fill-box; transform-origin: center; }
+body[data-module=music] #brand .lg-orbit { display: none; } body[data-module=music] #brand .lg-bars { display: block; }
+body.mu-playing #brand .lg-bars path { animation: mu-bars .5s ease-in-out infinite alternate; } body.mu-playing #brand .lg-bars path:nth-child(2) { animation-delay: -.17s; } body.mu-playing #brand .lg-bars path:nth-child(3) { animation-delay: -.34s; }
+@keyframes mu-bars { from { transform: scaleY(.45); } to { transform: scaleY(1.15); } }
+body[data-module=music] { --gold: #ff5a3c; --gold2: #ff8a73; --onacc: #ffffff; --sel: #3a1d17; --cellsel: #40221b; --cellact: #55291f; }
+[data-theme=midnight] body[data-module=music] { --sel: #33201c; } [data-theme=porcelain] body[data-module=music], [data-theme=lilac] body[data-module=music] { --gold: #e8482b; --gold2: #c93a20; --sel: #fde3dc; --cellsel: #fbe0d8; --cellact: #f8cfc4; }

@@ -35,12 +35,13 @@ const Music = {
     App.on('prefs', k => { if (k === 'beginner') this.draw(); });
     App.on('theme', () => this.draw());
     this.saveSoon = debounce(() => this.save().catch(UI.error), 900);
+    await Samples.init();
     const last = App.conf('music_last', null), data = last ? await api('music_load', { name: last }).catch(() => null) : null;
     if (data) await this.load(data); else await this.create(true);
     const frame = () => { if (App.module === 'music') this.frame(); requestAnimationFrame(frame); }; requestAnimationFrame(frame);
   },
   show() { if (this.song) this.draw(); },
-  hide() { Player.stop(); this.stopRec(); },
+  hide() { Player.stop(); this.stopRec(); document.body.classList.remove('mu-playing'); },
   async create(quiet) {
     const taken = new Set((await api('music_list')).map(s => s.name.toLowerCase())); let name = 'Untitled Song', n = 1;
     while (taken.has(name.toLowerCase())) name = 'Untitled Song ' + ++n;
@@ -51,7 +52,7 @@ const Music = {
     const bufs = data.bufs || {}; delete data.bufs;
     this.song = Player.song = data;
     for (const [id, path] of Object.entries(bufs)) { try { Player.bufs.set(id, await this.decode(path)); this.files.set(id, path); } catch (e) { UI.toast('Could not open ' + path.split(/[\\/]/).pop(), 'error'); } }
-    App.setConf('music_last', data.name); this.draw();
+    App.setConf('music_last', data.name); this.draw(); Samples.need(data).catch(() => {});
   },
   async decode(path) { const r = await fetch('/img/audio?path=' + encodeURIComponent(path)); if (!r.ok) throw new Error('missing'); return Player.ready().decodeAudioData(await r.arrayBuffer()); },
   async save() {
@@ -80,7 +81,7 @@ const Music = {
   /* ---- tracks */
   newTrack(role) {
     const R = ROLES[role], st = STYLES[this.song.style] || {}, n = this.song.tracks.filter(t => t.role === role).length, tr = { id: uid(), role, type: role === 'drums' ? 'drums' : 'synth', name: R.name + (n ? ' ' + (n + 1) : ''), vol: .8, len: 4 };
-    if (role === 'drums') { tr.steps = {}; tr.kit = st.kit || 'studio'; } else { tr.preset = st[role] || R.preset; tr.notes = []; }
+    if (role === 'drums') { tr.steps = {}; tr.kit = st.kit || 'studio'; } else { tr.preset = Samples.prefer(st[role] || R.preset); tr.notes = []; }
     Gen.fill(this.song, tr); this.song.tracks.push(tr); this.sel = this.fresh = tr.id;
   },
   addTrack(role) { this.edit(() => this.newTrack(role)); },
@@ -387,6 +388,7 @@ const Music = {
   tip(el, key, name) { el.dataset.tip = MU_TIPS[key]; if (name) el.dataset.tipName = name; return el; },
   mini(tr, key, min, max, def, name) { return this.tip(h('input', { type: 'range', class: 'mini', min, max, step: .01, value: tr[key] ?? def, onmousedown: () => this.mark(), oninput: e => { tr[key] = +e.target.value; this.changed(); }, ondblclick: e => { tr[key] = def; e.target.value = def; this.changed(); } }), key, name); },
   drawBar() {
+    document.body.classList.toggle('mu-playing', Player.playing);
     const s = this.song, adv = !Modes.beginner, lab = (text, key) => this.tip(h('span', { class: 'mu-lab' }, text), key);
     const num = (v, min, max, set) => h('input', { type: 'number', class: 'mu-num', value: v, min, max, onchange: e => { const n = clamp(Math.round(+e.target.value) || v, min, max); e.target.value = n; set(n); } });
     this.posEl = h('span', { class: 'mu-pos' });
@@ -429,7 +431,7 @@ const Music = {
   head(tr, board) {
     const sel = e => { if (board) return; const was = this.sel; this.pick(tr, e); if (this.sel !== was) this.draw(); };
     return [h('i', { class: 'mu-dot' }), h('b', { class: 'mu-tname', title: tr.name, onclick: sel, ondblclick: async () => { const n = await UI.prompt('Rename', 'Name', tr.name); if (n) this.edit(() => { tr.name = n; }); } }, tr.name),
-      tr.type === 'synth' ? h('select', { class: 'mu-preset', title: 'Instrument', onchange: async e => { const v = e.target.value; if (v === 'sample') { if (!await this.pickSample(tr)) e.target.value = tr.preset; } else { this.edit(() => { tr.preset = v; }, false); Player.tap(tr, trackNotes(this.song, tr)[7]); } } }, Object.entries(INSTR).map(([k, p]) => h('option', { value: k, selected: k === tr.preset }, p.name))) : null,
+      tr.type === 'synth' ? h('select', { class: 'mu-preset', title: 'Instrument', onchange: async e => { const v = e.target.value; if (v === 'sample') { if (!await this.pickSample(tr)) e.target.value = tr.preset; } else { this.edit(() => { tr.preset = v; }, false); if (INSTR[v].smp) await Samples.load(INSTR[v].smp, Player.ready()); Player.tap(tr, trackNotes(this.song, tr)[7]); } } }, Object.entries(INSTR).map(([k, p]) => h('option', { value: k, selected: k === tr.preset }, p.name))) : null,
       tr.type === 'drums' ? h('select', { class: 'mu-preset', title: 'Drum kit', onchange: e => { this.edit(() => { tr.kit = e.target.value; }, false); Player.tap(tr, 'kick'); } }, Object.entries(KITS).map(([k, p]) => h('option', { value: k, selected: k === (tr.kit || 'studio') }, p.name))) : null,
       tr.type !== 'audio' ? this.tip(h('button', { class: 'tbtn', onclick: () => this.idea(tr) }, '🎲' + (board ? '  New idea' : '')), 'idea', 'New idea') : null,
       h('span', { class: 'tb-fill' }),

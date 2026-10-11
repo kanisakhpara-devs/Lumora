@@ -48,6 +48,27 @@ const ROLES = {
   audio: { name: 'Audio', color: '#9aa0a6' },
 };
 
+/* Sampled instruments: recordings of real instruments, a few notes in every octave, shifted to the notes in between.
+   They live in web/samples (see CREDITS there) and are listed in samples/index.json; without that folder the app simply has none. */
+const Samples = {
+  list: {}, bank: new Map(), busy: new Map(),
+  async init() {
+    try { const r = await fetch('samples/index.json'); this.list = r.ok ? await r.json() : {}; } catch (e) { this.list = {}; }
+    const mine = INSTR.sample; delete INSTR.sample;
+    for (const [k, d] of Object.entries(this.list)) INSTR['s_' + k] = { name: d.name, smp: k, fallback: d.fallback || 'keys', gain: d.gain || 1, gm: d.gm };
+    INSTR.sample = mine;
+  },
+  /* the sampled version of a synth instrument, when one is installed */
+  prefer(preset) { const k = Object.keys(this.list).find(n => this.list[n].fallback === preset && this.list[n].first); return k ? 's_' + k : preset; },
+  load(name, ctx) {
+    if (this.bank.has(name) || !this.list[name]) return Promise.resolve();
+    if (!this.busy.has(name)) this.busy.set(name, Promise.all(this.list[name].notes.map(async ([midi, file]) => { try { return [midi, await ctx.decodeAudioData(await (await fetch(`samples/${name}/${file}`)).arrayBuffer())]; } catch (e) { return null; } }))
+      .then(got => { const m = new Map(got.filter(Boolean)); if (m.size) this.bank.set(name, m); this.busy.delete(name); }));
+    return this.busy.get(name);
+  },
+  need(song, ctx) { ctx = ctx || Player.ready(); return Promise.all(song.tracks.map(t => (INSTR[t.preset] || {}).smp).filter(Boolean).map(n => this.load(n, ctx))); },
+  near(name, midi) { const m = this.bank.get(name); if (!m) return null; let best = null; for (const k of m.keys()) if (best == null || Math.abs(k - midi) < Math.abs(best - midi)) best = k; return [m.get(best), best]; },
+};
 const stepDur = song => 60 / song.bpm / 4;
 /* when a step sounds: every second sixteenth is pushed late by the swing amount */
 const stepTime = (song, step) => (step + (step % 2 ? (song.swing || 0) * .5 : 0)) * stepDur(song);
@@ -112,6 +133,10 @@ const Sound = {
   note(ctx, out, preset, midi, t, dur, v = .8, smp) {
     const P = INSTR[preset] || INSTR.keys, f = 440 * 2 ** ((midi - 69) / 12), end = t + Math.max(.04, dur), amp = ctx.createGain(), lp = ctx.createBiquadFilter();
     if (preset === 'sample') { if (smp) this.one(ctx, out, smp, t, v, 2 ** ((midi - 60) / 12), end); return; }
+    if (P.smp) {                       // a recorded instrument: play the nearest recorded note, shifted to pitch
+      const hit = Samples.near(P.smp, midi); if (!hit) { Samples.load(P.smp, ctx); return this.note(ctx, out, P.fallback, midi, t, dur, v); }
+      return this.one(ctx, out, hit[0], t, v * P.gain, 2 ** ((midi - hit[1]) / 12), end + .03);
+    }
     if (P.ks) return this.one(ctx, out, this.pluck(ctx, midi, P.ks), t, v * P.gain, 1, end + P.r);
     lp.type = 'lowpass'; lp.Q.value = P.q || .7; lp.frequency.setValueAtTime(P.c0, t); lp.frequency.setTargetAtTime(P.c1, t, P.fd);
     amp.gain.setValueAtTime(0, t); amp.gain.linearRampToValueAtTime(v * P.gain, t + P.a); amp.gain.setTargetAtTime(v * P.gain * P.s, t + P.a, P.d); amp.gain.setTargetAtTime(0, end, P.r / 3);
@@ -246,7 +271,8 @@ const Player = {
 };
 
 /* the whole song as one AudioBuffer, for export */
-function renderSong(song, bufs) {
+async function renderSong(song, bufs) {
+  await Samples.need(song);
   const sd = stepDur(song), total = songSteps(song), ctx = new OfflineAudioContext(2, Math.ceil((total * sd + 2.5) * 44100), 44100), rig = new Rig(ctx, bufs);
   rig.sync(song);
   for (let s = 0; s < total; s++) rig.fire(song, s, stepTime(song, s));
@@ -370,7 +396,7 @@ function midiFile(song) {
       else for (const n of tr.notes) if (n.s === ps) ev.push([s * TPS, 1, n.n], [(s + n.d) * TPS - 1, 0, n.n]);
     }
     ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    const bytes = [0, 255, 3, ...vlq(tr.name.length), ...text(tr.name)]; if (!drums) bytes.push(0, 192 | c, GM_PROG[tr.preset] || 0); let at = 0;
+    const bytes = [0, 255, 3, ...vlq(tr.name.length), ...text(tr.name)]; if (!drums) bytes.push(0, 192 | c, (INSTR[tr.preset] || {}).gm ?? GM_PROG[tr.preset] ?? 0); let at = 0;
     for (const [t, on, note] of ev) { bytes.push(...vlq(t - at), (on ? 144 : 128) | c, note, on ? 96 : 0); at = t; }
     bytes.push(0, 255, 47, 0); chunks.push(chunk('MTrk', bytes));
   }

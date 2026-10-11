@@ -11,7 +11,7 @@ A Python engine handles the disk, catalogs, colour management and export; the in
 - *Advanced* puts the same song on a timeline with a mixer, and gives audio tracks range editing (split, cut, copy, paste, trim), effects (fades, amplify, normalize, compressor, filters, echo, reverb, reverse, pitch, tempo, speed, noise reduction), a spectrogram view, and silence/tone/noise generators.
 - Import audio or MIDI, record from the microphone, use your own samples for any drum or as an instrument, and export WAV, MP3, FLAC, OGG, per-track stems or MIDI.
 
-All instruments and drum kits are synthesised in the app; no sample library is bundled. Songs are kept in `Pictures\Opia\Music\<song>`.
+Ten instruments are recordings of real ones (piano, electric piano, two guitars, bass, strings, violin, cello, flute, trumpet), taken from the Fluid R3 GM SoundFont under CC BY 3.0; see `web/samples/CREDITS.md`. The other instruments and all drum kits are synthesised in the app. Songs are kept in `Pictures\Opia\Music\<song>`.
 
 ## Run it
 
