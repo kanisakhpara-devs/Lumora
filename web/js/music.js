@@ -81,7 +81,7 @@ const Music = {
   newTrack(role) {
     const R = ROLES[role], st = STYLES[this.song.style] || {}, n = this.song.tracks.filter(t => t.role === role).length, tr = { id: uid(), role, type: role === 'drums' ? 'drums' : 'synth', name: R.name + (n ? ' ' + (n + 1) : ''), vol: .8, len: 4 };
     if (role === 'drums') { tr.steps = {}; tr.kit = st.kit || 'studio'; } else { tr.preset = st[role] || R.preset; tr.notes = []; }
-    Gen.fill(this.song, tr); this.song.tracks.push(tr); this.sel = tr.id;
+    Gen.fill(this.song, tr); this.song.tracks.push(tr); this.sel = this.fresh = tr.id;
   },
   addTrack(role) { this.edit(() => this.newTrack(role)); },
   /* a whole first draft in a style: four parts written to fit each other */
@@ -98,10 +98,10 @@ const Music = {
   },
   idea(tr) { this.edit(() => Gen.fill(this.song, tr)); },
   removeTrack(tr) { this.edit(() => { this.song.tracks = this.song.tracks.filter(t => t !== tr); if (this.sel === tr.id) this.sel = null; this.range = null; }); },
-  duplicate(tr) { this.edit(() => { const c = clone(tr); c.id = uid(); c.name += ' copy'; delete c.x; delete c.y; (c.clips || []).forEach(k => { k.id = uid(); }); this.song.tracks.splice(this.song.tracks.indexOf(tr) + 1, 0, c); this.sel = c.id; }); },
+  duplicate(tr) { this.edit(() => { const c = clone(tr); c.id = uid(); c.name += ' copy'; delete c.x; delete c.y; (c.clips || []).forEach(k => { k.id = uid(); }); this.song.tracks.splice(this.song.tracks.indexOf(tr) + 1, 0, c); this.sel = this.fresh = c.id; }); },
   addAudio(buf, name, path, at = 0, trim = 0) {
     const id = uid(); Player.bufs.set(id, buf); if (path) this.files.set(id, path);
-    this.edit(() => { const tr = { id: uid(), role: 'audio', type: 'audio', name, vol: .9, clips: [{ id: uid(), buf: id, start: at, off: trim, dur: buf.duration - trim, gain: 1 }] }; this.song.tracks.push(tr); this.sel = tr.id; this.fit(); });
+    this.edit(() => { const tr = { id: uid(), role: 'audio', type: 'audio', name, vol: .9, clips: [{ id: uid(), buf: id, start: at, off: trim, dur: buf.duration - trim, gain: 1 }] }; this.song.tracks.push(tr); this.sel = this.fresh = tr.id; this.fit(); });
   },
   async importAudio() {
     const path = await UI.pickFile(App.conf('music_dir', App.boot.pictures) + '\\x', Object.keys({ '.wav': 1, '.mp3': 1, '.ogg': 1, '.flac': 1, '.m4a': 1, '.aac': 1, '.opus': 1, '.webm': 1 })); if (!path) return;
@@ -349,6 +349,7 @@ const Music = {
     if (!this.bar) return;
     this.grids = []; this.drawBar(); this.drawTools();
     if (Modes.beginner) { this.editor.replaceChildren(); this.drawBoard(); } else { this.drawTimeline(); this.drawEditor(); }
+    if (this.fresh) this.reveal($('.mu-board, .tl-scroll', this.stage), Modes.beginner ? '.mu-card' : '.tl-row');
   },
   tip(el, key, name) { el.dataset.tip = MU_TIPS[key]; if (name) el.dataset.tipName = name; return el; },
   mini(tr, key, min, max, def, name) { return this.tip(h('input', { type: 'range', class: 'mini', min, max, step: .01, value: tr[key] ?? def, onmousedown: () => this.mark(), oninput: e => { tr[key] = +e.target.value; this.changed(); }, ondblclick: e => { tr[key] = def; e.target.value = def; this.changed(); } }), key, name); },
@@ -404,7 +405,7 @@ const Music = {
 
   /* Beginner: free-form board of cards */
   drawBoard() {
-    const s = this.song, board = h('div', { class: 'mu-board' });
+    const s = this.song, board = h('div', { class: 'mu-board' }), was = $('.mu-board', this.stage), keep = was ? [was.scrollLeft, was.scrollTop] : [0, 0];
     if (!s.tracks.length) {
       board.append(h('div', { class: 'mu-empty' }, h('h2', {}, 'Make something'), h('p', {}, 'A song here is a few short riffs that loop together. Add them one at a time, or let Opia start you off and then change whatever you like.'),
         h('button', { class: 'btn primary big', onclick: () => this.starter() }, '\u2728  Start me off'), h('div', { class: 'mu-or' }, 'or pick a style'), h('div', { class: 'mu-row' }, Object.entries(STYLES).map(([k, st]) => h('button', { class: 'btn', onclick: () => this.starter(k) }, st.name))),
@@ -419,10 +420,16 @@ const Music = {
       if (tr.x == null) { tr.x = 20; tr.y = -1; }
       card.dataset.id = tr.id;
     }
-    this.stage.replaceChildren(board);
+    this.stage.replaceChildren(board); board.scrollLeft = keep[0]; board.scrollTop = keep[1];
     for (const card of $$('.mu-card', board)) { const tr = this.track(card.dataset.id); if (tr.y >= 0) bottom = Math.max(bottom, tr.y + card.offsetHeight + 16); }
     for (const card of $$('.mu-card', board)) { const tr = this.track(card.dataset.id); if (tr.y < 0) { tr.y = bottom; bottom += card.offsetHeight + 16; } Object.assign(card.style, { left: tr.x + 'px', top: tr.y + 'px' }); }
     board.append(h('div', { class: 'mu-pad', style: { top: bottom + 40 + 'px' } }));
+  },
+  /* a part that was just added may land out of sight: scroll to it and flash it so the click visibly did something */
+  reveal(root, sel) {
+    const id = this.fresh; this.fresh = null; if (!id || !root) return;
+    const el = $$(sel, root).find(c => c.dataset.id === id); if (!el) return;
+    root.scrollTop = Math.max(0, el.offsetTop - (root.clientHeight - el.offsetHeight) / 2); el.classList.add('fresh'); setTimeout(() => el.classList.remove('fresh'), 1600);
   },
   dragCard(e, tr, card) {
     if (e.target.closest('button,select,input')) return;
@@ -467,7 +474,7 @@ const Music = {
         }
       }
       rows.push(h('div', { class: 'tl-row' + (tr.id === this.sel ? ' sel' : ''), style: { '--c': ROLES[tr.role].color } }, h('div', { class: 'tl-head', onmousedown: e => { if (!e.target.closest('button,select,input') && this.sel !== tr.id) { this.sel = tr.id; this.clipSel = this.range = null; this.draw(); } } }, this.head(tr, false)), lane));
-      rows[rows.length - 1].style.setProperty('--c', ROLES[tr.role].color);
+      rows[rows.length - 1].style.setProperty('--c', ROLES[tr.role].color); rows[rows.length - 1].dataset.id = tr.id;
     }
     this.headEl = h('div', { class: 'tl-play' }); this.curEl = h('div', { class: 'tl-cur' });
     const content = h('div', { class: 'tl-content' }, rows, this.headEl, this.curEl);
