@@ -74,12 +74,9 @@ class Handler(BaseHTTPRequestHandler):
         q = dict(urllib.parse.parse_qsl(u.query))
         path = urllib.parse.unquote(u.path)
         try:
-            if path.startswith('/img/'):
-                name, _, rest = path[5:].partition('/')
-                fn = core.IMG.get(name)
-                if not fn:
-                    return self._send(404, b'not found', 'text/plain')
-                res = fn(rest, q)
+            name, _, rest = path[5:].partition('/')
+            if path.startswith('/img/') and name in core.IMG:      # anything else under /img/ is a static file (the icon)
+                res = core.IMG[name](rest, q)
                 return self._send(200, res.data, res.ctype, cache=res.cache and 'v' in q)
             rel = 'index.html' if path in ('/', '') else path.lstrip('/')
             target = os.path.abspath(os.path.join(core.WEB, rel))
