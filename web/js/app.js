@@ -46,6 +46,12 @@ function registerCommands() {
     const extra = [['Rating 0–5 / Labels 6–9', '0 – 9'], ['Keyword Set shortcuts', 'Alt+1 – 9'], ['Develop: Crop / Heal / Brush / Linear / Radial', 'R / Q / K / M / Shift+M'], ['Develop: Before / Side-by-side / Split / Reference', '\\ / Y / Shift+Y / Shift+R'], ['Develop: WB picker / Clipping / Soft proof / Mask overlay', 'W / J / S / O'], ['Zoom', 'Z, Space, mouse wheel'], ['Move loupe guides', 'Ctrl+drag']].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, h('kbd', {}, b))));
     UI.dialog({ title: 'Keyboard Shortcuts', width: 560, body: h('div', { class: 'scroll' }, h('table', { class: 'tbl' }, ...extra, ...rows)) }); });
   C('mode.beginner', 'Beginner Mode', '', () => Modes.set('beginner', !Modes.beginner), { checked: () => Modes.beginner }); C('mode.trackpad', 'Trackpad-Friendly Controls', '', () => Modes.set('trackpad', !Modes.trackpad), { checked: () => Modes.trackpad });
+  const M = (id, label, key, fn) => C('music.' + id, label, key, () => { if (App.module === 'music') fn(); }, { modules: ['music'] });
+  M('new', 'New Song', '', () => Music.save().then(() => Music.create())); M('rename', 'Rename Song…', '', () => Music.rename()); M('import', 'Import Audio…', '', () => Music.importAudio()); M('record', 'Record', '', () => Music.toggleRec()); M('export', 'Export as WAV…', '', () => Music.exportWav());
+  M('undo', 'Undo', '', () => Music.step(Music.undo, Music.redo)); M('redo', 'Redo', '', () => Music.step(Music.redo, Music.undo)); M('cut', 'Cut', '', () => Music.cut()); M('copy', 'Copy', '', () => Music.copy()); M('paste', 'Paste', '', () => Music.paste());
+  M('delete', 'Delete', '', () => Music.remove(true)); M('silence', 'Silence', '', () => Music.remove(false)); M('split', 'Split', '', () => Music.splitHere()); M('trim', 'Trim to Selection', '', () => Music.trim());
+  M('fadein', 'Fade In', '', () => Music.fade(true)); M('fadeout', 'Fade Out', '', () => Music.fade(false)); M('amplify', 'Amplify…', '', () => Music.amplify()); M('normalize', 'Normalize', '', () => Music.normalize()); M('reverse', 'Reverse', '', () => Music.reverse());
+  for (const r of ['drums', 'bass', 'chords', 'melody']) M('add.' + r, 'Add ' + ROLES[r].name, '', () => Music.addTrack(r));
   C('help.tour', 'Take the Tour', '', () => Tour.start());
   C('help.about', 'About Opia', '', () => UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`));
 }
@@ -54,6 +60,14 @@ function buildMenus() {
   const recent = () => (App.cfg.recent_catalogs || []).slice(0, 6).map(p => ({ label: p.split(/[\\/]/).pop().replace(/\.(opiacat|lumcat|lrcat)$/i, ''), checked: p === App.info.path, run: () => Catalogs.switchTo(p) }));
   const rating = { label: 'Set Rating', sub: [0, 1, 2, 3, 4, 5].map(r => ({ label: r ? '★'.repeat(r) : 'None', key: String(r), run: () => App.rate({ rating: r }) })) };
   const looks = [{ label: 'Theme', sub: looksMenu('theme') }, { label: 'Language', sub: looksMenu('lang') }, '-', 'mode.beginner', 'mode.trackpad', '-'];
+  if (App.module === 'music') return App.buildMenus([
+    ['File', ['music.new', 'music.rename', '-', 'music.import', 'music.record', '-', 'music.export', '-', 'file.prefs']],
+    ['Edit', Modes.beginner ? ['music.undo', 'music.redo'] : ['music.undo', 'music.redo', '-', 'music.cut', 'music.copy', 'music.paste', 'music.delete', 'music.silence', '-', 'music.split', 'music.trim']],
+    ['Track', ['music.add.drums', 'music.add.bass', 'music.add.chords', 'music.add.melody', 'music.import']],
+    ...(Modes.beginner ? [] : [['Effects', ['music.fadein', 'music.fadeout', '-', 'music.amplify', 'music.normalize', 'music.reverse']]]),
+    ['View', () => [...looks, 'view.full']],
+    ['Help', ['help.tour', 'help.keys', 'help.about']],
+  ]);
   if (Modes.beginner) return App.buildMenus([   // the short menus; Advanced has everything
     ['File', ['file.import', 'file.export', '-', 'file.prefs']],
     ['Edit', ['dev.undo', 'dev.redo', '-', 'edit.selectall', 'edit.selectnone']],
@@ -93,6 +107,9 @@ async function start() {
     new MutationObserver(() => $('#brand').classList.toggle('busy', $('#activity').children.length > 0)).observe($('#activity'), { childList: true });
     $('#identity').replaceChildren(Identity.el()); $('#identity').ondblclick = () => Identity.edit(); $('#identity').title = 'Double-click to customise the identity plate';
     const pick = $('#modpick'); for (const m of MODULES) { App.addModule(m); pick.append(h('a', { data: { m: m.id }, onclick: () => App.show(m.id) }, m.name)); }
+    App.addModule(Music);
+    const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg' }, h('a', { class: App.module !== 'music' ? 'on' : '', title: 'Organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Photos'), h('a', { class: App.module === 'music' ? 'on' : '', title: 'Make and edit music', onclick: () => App.show('music') }, 'Music')));
+    App.on('module', id => { if (id !== 'music') App.lastPhoto = id; apps(); buildMenus(); dispatchEvent(new Event('resize')); });
     Dev.el = UI.shell('develop'); Dev.init(Dev.el); GLR.init(Dev.cv);
     Film.init();
     await App.loadCatalog();

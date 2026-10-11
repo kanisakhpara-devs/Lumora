@@ -515,6 +515,7 @@ const App = {
     if ($('#overlays').children.length) return;
     const name = this.keyName(e), m = this.modules[this.module];
     if (m && m.keys && m.keys[name]) { e.preventDefault(); const k = m.keys[name]; typeof k === 'string' ? this.run(k) : k(e); return; }
+    if (m && m.exclusive && !/^(F11|Ctrl\+[,/]|Ctrl\+Alt\+.+)$/.test(name)) return;   // a workspace of its own: the photo shortcuts stay out of it
     for (const c of Object.values(this.commands)) {
       if (c.key === name && (!c.modules || c.modules.includes(this.module))) { e.preventDefault(); this.run(c.id); return; }
     }
