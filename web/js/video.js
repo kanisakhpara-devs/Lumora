@@ -11,7 +11,7 @@ const VD_POS = [['bottom', 'Bottom'], ['lower', 'Lower third'], ['center', 'Cent
 const VD_EXTS = ['.mp4', '.m4v', '.mov', '.webm', '.mkv', '.avi', '.wmv', '.mpg', '.mpeg', '.mts', '.m2ts', '.3gp', '.mp3', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.flac', '.wma', '.aif', '.aiff', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tif', '.tiff', '.heic'];
 
 const Vid = {
-  id: 'video', name: 'Video', exclusive: true, p: null, sel: new Set(), t: 0, playing: false, z: 60, undo: [], redo: [], snap: true,
+  id: 'video', name: 'Motion', exclusive: true, p: null, sel: new Set(), t: 0, playing: false, z: 60, undo: [], redo: [], snap: true,
   els: new Map(), peaks: new Map(), titleCache: new Map(), media: new Map(),
 
   /* ---- set-up */
@@ -110,7 +110,7 @@ const Vid = {
   mediaUrl(path) { return '/img/media?path=' + encodeURIComponent(path); },
   playPath(c) { const m = this.media.get(c.src); return (m && m.play) || c.src; },
   async addPhotos() {
-    const ids = App.selIds(); if (!ids.length) return UI.toast('Select some photos in Photos first.'); if (!this.p) await this.create(); if (!this.p) return;
+    const ids = App.selIds(); if (!ids.length) return UI.toast('Select some photos in Lens first.'); if (!this.p) await this.create(); if (!this.p) return;
     await this.saveNow(); const made = [];
     for (const id of ids) {
       const ph = App.photo(id); if (!ph) continue;
@@ -309,8 +309,8 @@ const Vid = {
   btn(label, run, tip, cls) { const b = h('button', { class: 'btn ' + (cls || ''), onclick: () => { try { const r = run(); if (r && r.catch) r.catch(UI.error); } catch (e) { UI.error(e); } } }, label); if (tip) { b.dataset.tip = tip; b.dataset.tipName = label.replace(/…$/, ''); } return b; },
   async drawWelcome() {
     const list = await api('video_list').catch(() => []);
-    this.welcomeEl.replaceChildren(h('div', { class: 'pd-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-video-icon.svg', alt: '' }), h('h2', {}, 'Video'), h('p', { class: 'dim' }, 'Put clips, pictures, titles and music on a timeline, trim and split them, fade between them, and export an MP4.'),
-      h('div', { class: 'pd-big' }, this.btn('New Video…', () => this.create(), null, 'primary big'), this.btn('Make a Slideshow from Selected Photos', () => this.addPhotos(), 'Start a project from the photos selected in Photos, four seconds each with crossfades.', 'big')),
+    this.welcomeEl.replaceChildren(h('div', { class: 'pd-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-video-icon.svg', alt: '' }), h('h2', {}, 'Motion'), h('p', { class: 'dim' }, 'Put clips, pictures, titles and music on a timeline, trim and split them, fade between them, and export an MP4.'),
+      h('div', { class: 'pd-big' }, this.btn('New Video…', () => this.create(), null, 'primary big'), this.btn('Make a Slideshow from Selected Photos', () => this.addPhotos(), 'Start a project from the photos selected in Lens, four seconds each with crossfades.', 'big')),
       list.length ? h('div', { class: 'pd-recent' }, h('div', { class: 'fsec' }, 'Your projects'), list.slice(0, 10).map(pr => h('a', { data: { notr: 1 }, onclick: () => this.load(pr.name).catch(UI.error) }, pr.name))) : null));
   },
   drawBar() {
@@ -319,7 +319,7 @@ const Vid = {
     const projBtn = h('button', { class: 'btn', onclick: e => this.projects(e).catch(UI.error) }, 'Projects ▾');
     this.bar.replaceChildren(projBtn, h('b', { class: 'mu-name', title: 'Double-click to rename', data: { notr: 1 }, ondblclick: () => this.rename().catch(UI.error) }, p.name), h('span', { class: 'dim' }, p.w + ' × ' + p.h + ', ' + p.fps + ' fps'), sep(),
       this.btn('Import Media…', () => this.importMedia(), 'Add video, sound or pictures to this project. You can also drop files on the media list or straight onto the timeline.'), this.btn('Add Title', () => this.addTitle(), 'Put words on screen at the playhead (T).'),
-      this.btn('Add Selected Photos', () => this.addPhotos(), 'Add the photos selected in Photos, with their Develop edits, as a run of pictures with crossfades.', 'adv'),
+      this.btn('Add Selected Photos', () => this.addPhotos(), 'Add the photos selected in Lens, with their Develop edits, as a run of pictures with crossfades.', 'adv'),
       h('span', { style: { flex: 1 } }),
       h('button', { class: 'btn', title: 'Undo', disabled: !this.undo.length, onclick: () => this.step(this.undo, this.redo) }, '↶'), h('button', { class: 'btn', title: 'Redo', disabled: !this.redo.length, onclick: () => this.step(this.redo, this.undo) }, '↷'),
       this.btn('Export…', () => this.exportDialog(), 'Make an MP4 video file from the timeline.', 'primary'),
@@ -327,7 +327,7 @@ const Vid = {
   },
   moreItems() {
     const it = (label, run, adv) => (adv && Modes.beginner ? null : { label, run: () => { const r = run(); if (r && r.catch) r.catch(UI.error); } });
-    return [it('Project Settings…', () => this.settings()), it('Import from Disk…', () => this.importFromDisk(), 1), it('Add Selected Photos', () => this.addPhotos()), '-', it('Save Frame as Picture…', () => this.saveFrame()), it('Edit Frame in Image Editor', () => this.frameToImage(), 1), '-', it('Add Video Track', () => this.addTrack('video'), 1), it('Add Audio Track', () => this.addTrack('audio'), 1)].filter(Boolean);
+    return [it('Project Settings…', () => this.settings()), it('Import from Disk…', () => this.importFromDisk(), 1), it('Add Selected Photos', () => this.addPhotos()), '-', it('Save Frame as Picture…', () => this.saveFrame()), it('Edit Frame in Imagine', () => this.frameToImage(), 1), '-', it('Add Video Track', () => this.addTrack('video'), 1), it('Add Audio Track', () => this.addTrack('audio'), 1)].filter(Boolean);
   },
   drawTools() {
     const sep = () => h('span', { class: 'mu-sep' }), one = this.picked()[0];

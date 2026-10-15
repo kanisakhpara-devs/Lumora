@@ -6,30 +6,30 @@
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0E0E10?style=for-the-badge&logo=windows&logoColor=F4F1EA">
   <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3D5AFE?style=for-the-badge&logo=python&logoColor=white">
   <img alt="Runs offline" src="https://img.shields.io/badge/Runs-offline-1a9c4b?style=for-the-badge">
-  <img alt="Five workspaces" src="https://img.shields.io/badge/Workspaces-5-B57CFF?style=for-the-badge">
+  <img alt="Five workspaces: Lens, Imagine, Motion, Groove, Folio" src="https://img.shields.io/badge/Lens%20%C2%B7%20Imagine%20%C2%B7%20Motion%20%C2%B7%20Groove%20%C2%B7%20Folio-B57CFF?style=for-the-badge">
 </p>
 
 <p align="center">
-  <a href="#-photos"><b>Photos</b></a> ·
-  <a href="#-image"><b>Image</b></a> ·
-  <a href="#-video"><b>Video</b></a> ·
-  <a href="#-music"><b>Music</b></a> ·
-  <a href="#-pdf"><b>PDF</b></a> ·
+  <a href="#-lens"><b>Lens</b></a> ·
+  <a href="#-imagine"><b>Imagine</b></a> ·
+  <a href="#-motion"><b>Motion</b></a> ·
+  <a href="#-groove"><b>Groove</b></a> ·
+  <a href="#-folio"><b>Folio</b></a> ·
   <a href="#-get-started"><b>Get started</b></a> ·
   <a href="CHANGELOG.md"><b>Changelog</b></a>
 </p>
 
 ---
 
-**Opia** is a desktop app for the things you make: a photo organiser and raw-style editor, a layered picture editor, a video editor, a music studio and a PDF editor. You switch between them with one click. Everything runs on your own computer: no account, no uploads, no subscription. A Python engine handles the files, catalogs, colour management and exports. The interface draws every photo edit on the graphics card (WebGL 2).
+**Opia** is a desktop app for the things you make, in five workspaces: **Lens** (a photo organiser and raw-style editor), **Imagine** (a layered picture editor), **Motion** (a video editor), **Groove** (a music studio) and **Folio** (a PDF editor). You switch between them with one click. Everything runs on your own computer: no account, no uploads, no subscription. A Python engine handles the files, catalogs, colour management and exports. The interface draws every photo edit on the graphics card (WebGL 2).
 
 Every workspace has a **Beginner** mode that shows the essentials in bigger controls, and an **Advanced** mode with every panel and tool. Opia also comes in four themes, in English and Spanish, and has trackpad-friendly controls.
 
 <br>
 
-## <img src="web/img/opia-icon.svg" width="34" align="top"> Photos
+## <img src="web/img/opia-icon.svg" width="34" align="top"> Lens
 
-<img src="docs/readme/photos.png" alt="The Photos library: a grid of landscape photos with ratings, flags and colour labels, the catalog and folders on the left and keywording on the right">
+<img src="docs/readme/photos.png" alt="The Lens library: a grid of landscape photos with ratings, flags and colour labels, the catalog and folders on the left and keywording on the right">
 
 Import, sort and find your photos, then edit them without ever changing the original files.
 
@@ -46,9 +46,9 @@ Your photos are never modified. Edits live in the catalog, and optionally in `.x
 
 <br>
 
-## <img src="web/img/opia-image-icon.svg" width="34" align="top"> Image
+## <img src="web/img/opia-image-icon.svg" width="34" align="top"> Imagine
 
-<img src="docs/readme/image.png" alt="The Image editor: a photo with a caption box shape layer and two editable text layers, tools on the left and the layers panel on the right">
+<img src="docs/readme/image.png" alt="Imagine, the picture editor: a photo with a caption box shape layer and two editable text layers, tools on the left and the layers panel on the right">
 
 A layered picture editor in the spirit of Photoshop.
 
@@ -56,14 +56,14 @@ A layered picture editor in the spirit of Photoshop.
 - **Selections:** rectangle, oval, lasso and magic wand (Shift adds, Alt takes away). Feather, invert, fill, copy / cut / paste, layer via copy.
 - **Tools:** brush and eraser (with pen pressure), fill bucket, gradient, eyedropper, text, shapes, crop and **Free Transform** (Ctrl+T).
 - **Adjustments with a live preview:** levels, curves, hue / saturation, brightness / contrast, colour balance, auto tone, black & white, posterize and threshold. **Filters:** blur, sharpen, noise and pixelate.
-- Opens PNG, JPEG, WebP, GIF, BMP, TIFF, HEIC and RAW. Exports PNG, JPEG, WebP or TIFF, straight into your Photos catalog if you like. Projects (`.opiaimg`) keep every layer.
-- In Photos, *Photo › Edit in Image Editor* opens a photo with its Develop edits applied.
+- Opens PNG, JPEG, WebP, GIF, BMP, TIFF, HEIC and RAW. Exports PNG, JPEG, WebP or TIFF, straight into your Lens catalog if you like. Projects (`.opiaimg`) keep every layer.
+- In Lens, *Photo › Edit in Imagine* opens a photo with its Develop edits applied.
 
 <br>
 
-## <img src="web/img/opia-video-icon.svg" width="34" align="top"> Video
+## <img src="web/img/opia-video-icon.svg" width="34" align="top"> Motion
 
-<img src="docs/readme/video.png" alt="The Video editor: a title over a sunset photo in the preview, and a timeline with a title track, eight photo clips with crossfades and a music track">
+<img src="docs/readme/video.png" alt="Motion, the video editor: a title over a sunset photo in the preview, and a timeline with a title track, eight photo clips with crossfades and a music track">
 
 A timeline editor that exports MP4.
 
@@ -75,9 +75,9 @@ A timeline editor that exports MP4.
 
 <br>
 
-## <img src="web/img/opia-music-icon.svg" width="34" align="top"> Music
+## <img src="web/img/opia-music-icon.svg" width="34" align="top"> Groove
 
-<img src="docs/readme/music.png" alt="The Music studio in Advanced mode: drums, bass, chords and melody riffs over ten bars, an ambient audio track, and the melody's note grid below">
+<img src="docs/readme/music.png" alt="Groove, the music studio, in Advanced mode: drums, bass, chords and melody riffs over ten bars, an ambient audio track, and the melody's note grid below">
 
 A small studio for people who don't read music, which still has the tools for those who do.
 
@@ -88,9 +88,9 @@ A small studio for people who don't read music, which still has the tools for th
 
 <br>
 
-## <img src="web/img/opia-pdf-icon.svg" width="34" align="top"> PDF
+## <img src="web/img/opia-pdf-icon.svg" width="34" align="top"> Folio
 
-<img src="docs/readme/pdf.png" alt="The PDF editor: an itinerary with highlighted text, ticks and a red note with an arrow, page thumbnails on the left">
+<img src="docs/readme/pdf.png" alt="Folio, the PDF editor: an itinerary with highlighted text, ticks and a red note with an arrow, page thumbnails on the left">
 
 Read, fill in, sign and rearrange PDFs.
 
@@ -136,10 +136,10 @@ The packaged single-file app (`dist\Opia.exe`) is built with PyInstaller; the ex
 | Where | Keys |
 | --- | --- |
 | Everywhere | **F10** menus · **Ctrl+Z / Ctrl+Y** undo / redo · **Ctrl+/** all shortcuts · **F11** full screen |
-| Photos | **1–5** rating · **P / X / U** pick, reject, unflag · **G / E** grid / loupe · **D** Develop |
-| Image | **V M L W B E G T U C** tools · **[ ]** brush size · **Ctrl+T** transform · **Ctrl+J** layer via copy |
-| Video | **Space** play · **S** split · **T** title · **Alt+← →** nudge a clip · **Ctrl+Shift+E** export |
-| PDF | **Ctrl+F** find · **Ctrl+S** save · **Delete** remove the selected item or page |
+| Lens | **1–5** rating · **P / X / U** pick, reject, unflag · **G / E** grid / loupe · **D** Develop |
+| Imagine | **V M L W B E G T U C** tools · **[ ]** brush size · **Ctrl+T** transform · **Ctrl+J** layer via copy |
+| Motion | **Space** play · **S** split · **T** title · **Alt+← →** nudge a clip · **Ctrl+Shift+E** export |
+| Folio | **Ctrl+F** find · **Ctrl+S** save · **Delete** remove the selected item or page |
 
 Help › Customize Shortcuts lets you change them.
 
@@ -156,9 +156,9 @@ Help › Customize Shortcuts lets you change them.
 | Previews / Smart Previews | `<Name> Previews.opiadata`, `<Name> Smart Previews.opiadata` beside the catalog |
 | Backups | `Backups\<date>\<Name>.opiacat.zip` beside the catalog (or the folder set in Catalog Settings) |
 | Presets, preferences, recent catalogs | `Pictures\Opia\config.json` |
-| Songs | `Pictures\Opia\Music\<song>` |
-| Video projects, preview copies, thumbnails | `Pictures\Opia\Video\<project>`, `Pictures\Opia\Video\.cache` |
-| Image projects | wherever you save them (`.opiaimg`) |
+| Groove songs | `Pictures\Opia\Music\<song>` |
+| Motion projects, preview copies, thumbnails | `Pictures\Opia\Video\<project>`, `Pictures\Opia\Video\.cache` |
+| Imagine projects | wherever you save them (`.opiaimg`) |
 | Extra ICC profiles | `Pictures\Opia\Profiles` |
 | Plug-ins | `plugins\` here, plus any folders added in the Plug-in Manager |
 
@@ -203,7 +203,7 @@ Everything you can click can also be reached with **Tab** and pressed with **Ent
 ## 🧭 Honest limits
 
 <details>
-<summary><b>Photos</b></summary>
+<summary><b>Lens</b></summary>
 
 <br>
 
@@ -224,7 +224,7 @@ Everything you can click can also be reached with **Tab** and pressed with **Ent
 </details>
 
 <details>
-<summary><b>Image</b></summary>
+<summary><b>Imagine</b></summary>
 
 <br>
 
@@ -233,7 +233,7 @@ Editing is 8 bits per channel in sRGB, in the browser engine, so very large pict
 </details>
 
 <details>
-<summary><b>Video</b></summary>
+<summary><b>Motion</b></summary>
 
 <br>
 
@@ -242,7 +242,7 @@ No speed changes, keyframed motion, colour correction or effects on video clips,
 </details>
 
 <details>
-<summary><b>PDF</b></summary>
+<summary><b>Folio</b></summary>
 
 <br>
 
@@ -254,10 +254,10 @@ What you add is drawn into the page, so it looks the same in every viewer, and i
 
 ## 📜 Credits and licences
 
-- **FFmpeg** (video) comes from the [imageio-ffmpeg](https://github.com/imageio/imageio-ffmpeg) package. Its Python code is BSD-2-Clause, but the `ffmpeg` program inside it is a separate program under its own licence. Its builds are usually GPL builds (they include x264; run `ffmpeg -version` to check). That is fine for using Opia yourself. If you distribute `Opia.exe` with that ffmpeg inside, the GPL applies to the ffmpeg part. To use a different ffmpeg, put its full path in `config.json` as `"ffmpeg": "C:\\path\\to\\ffmpeg.exe"`; Help › About shows which one is in use.
+- **FFmpeg** (Motion) comes from the [imageio-ffmpeg](https://github.com/imageio/imageio-ffmpeg) package. Its Python code is BSD-2-Clause, but the `ffmpeg` program inside it is a separate program under its own licence. Its builds are usually GPL builds (they include x264; run `ffmpeg -version` to check). That is fine for using Opia yourself. If you distribute `Opia.exe` with that ffmpeg inside, the GPL applies to the ffmpeg part. To use a different ffmpeg, put its full path in `config.json` as `"ffmpeg": "C:\\path\\to\\ffmpeg.exe"`; Help › About shows which one is in use.
 - **Instrument samples:** Fluid R3 GM SoundFont, CC BY 3.0. See [`web/samples/CREDITS.md`](web/samples/CREDITS.md).
 - **Font:** Nunito, SIL Open Font License. See [`web/fonts/OFL.txt`](web/fonts/OFL.txt).
-- **PDF:** pypdf (BSD) and pypdfium2 (Apache-2.0 / BSD), chosen over AGPL alternatives.
+- **Folio:** pypdf (BSD) and pypdfium2 (Apache-2.0 / BSD), chosen over AGPL alternatives.
 - The pictures in these screenshots were generated for this page; they are not real photos.
 
 Opia's own code has no licence file yet, so by default all rights are reserved.

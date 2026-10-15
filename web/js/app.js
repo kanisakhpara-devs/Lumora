@@ -103,17 +103,17 @@ function registerCommands() {
   I('auto', 'Auto Tone', '', () => ImgEd.autoTone()); I('bw', 'Black & White', '', () => ImgEd.desaturate()); I('invertc', 'Invert Colours', 'Ctrl+I', () => ImgEd.invertColours()); I('posterize', 'Posterize…', '', () => ImgEd.posterize()); I('threshold', 'Threshold…', '', () => ImgEd.threshold());
   I('blur', 'Blur…', '', () => ImgEd.blur()); I('sharpen', 'Sharpen…', '', () => ImgEd.sharpen()); I('noise', 'Add Noise…', '', () => ImgEd.noise()); I('pixelate', 'Pixelate…', '', () => ImgEd.pixelate());
   I('zin', 'Zoom In', 'Ctrl+=', () => ImgEd.zoomBy(1.25)); I('zout', 'Zoom Out', 'Ctrl+-', () => ImgEd.zoomBy(.8)); I('zfit', 'Fit on Screen', 'Ctrl+0', () => ImgEd.setZoom('fit')); I('z100', 'Actual Pixels', 'Ctrl+1', () => ImgEd.setZoom(1));
-  C('photo.imageedit', 'Edit in Image Editor', '', () => ImgEd.fromPhoto(App.cur()));
+  C('photo.imageedit', 'Edit in Imagine', '', () => ImgEd.fromPhoto(App.cur()));
   const V = (id, label, key, fn, needP = true) => C('video.' + id, label, key, () => { if (App.module !== 'video') return; if (needP && !Vid.p) return UI.toast('Start or open a video project first.'); return fn(); }, { modules: ['video'] });
   V('new', 'New Project…', 'Ctrl+N', () => Vid.create(), false); V('rename', 'Rename Project…', '', () => Vid.rename()); V('delete', 'Delete Project…', '', () => Vid.del()); V('import', 'Import Media…', 'Ctrl+I', () => Vid.importMedia(), false); V('importdisk', 'Import from Disk…', '', () => Vid.importFromDisk(), false);
-  V('photos', 'Add Selected Photos', '', () => Vid.addPhotos(), false); V('export', 'Export Video…', 'Ctrl+Shift+E', () => Vid.exportDialog()); V('frame', 'Save Frame as Picture…', '', () => Vid.saveFrame()); V('frameimg', 'Edit Frame in Image Editor', '', () => Vid.frameToImage()); V('settings', 'Project Settings…', '', () => Vid.settings());
+  V('photos', 'Add Selected Photos', '', () => Vid.addPhotos(), false); V('export', 'Export Video…', 'Ctrl+Shift+E', () => Vid.exportDialog()); V('frame', 'Save Frame as Picture…', '', () => Vid.saveFrame()); V('frameimg', 'Edit Frame in Imagine', '', () => Vid.frameToImage()); V('settings', 'Project Settings…', '', () => Vid.settings());
   V('undo', 'Undo', 'Ctrl+Z', () => Vid.step(Vid.undo, Vid.redo)); V('redo', 'Redo', 'Ctrl+Y', () => Vid.step(Vid.redo, Vid.undo)); V('split', 'Split at Playhead', 'S', () => Vid.split()); V('del', 'Delete', 'Delete', () => Vid.remove()); V('ripple', 'Delete and Close Gap', 'Shift+Delete', () => Vid.remove(true));
   V('dup', 'Duplicate', 'Ctrl+D', () => Vid.duplicate()); V('selall', 'Select All Clips', 'Ctrl+A', () => Vid.selectAll()); V('xfade', 'Crossfade with Clip Before', '', () => Vid.crossfade()); V('detach', 'Detach Sound', '', () => Vid.detachAudio()); V('title', 'Add Title', 'T', () => Vid.addTitle());
   V('vtrack', 'Add Video Track', '', () => Vid.addTrack('video')); V('atrack', 'Add Audio Track', '', () => Vid.addTrack('audio')); V('play', 'Play / Pause', 'Space', () => Vid.toggle()); V('start', 'Go to Start', 'Home', () => Vid.seek(0)); V('end', 'Go to End', 'End', () => Vid.seek(Vid.total()));
   V('zin', 'Zoom In', 'Ctrl+=', () => Vid.zoom(1.4)); V('zout', 'Zoom Out', 'Ctrl+-', () => Vid.zoom(1 / 1.4)); V('zfit', 'Show Whole Timeline', 'Ctrl+0', () => Vid.zoomFit());
-  C('photo.videoshow', 'Make a Video from Selected Photos', '', () => { App.show('video'); Vid.addPhotos(); });
+  C('photo.videoshow', 'Make a Video in Motion', '', () => { App.show('video'); Vid.addPhotos(); });
   C('help.tour', 'Take the Tour', '', () => Tour.start());
-  C('help.about', 'About Opia', '', async () => { const ff = await api('video_ffmpeg').catch(() => ({ ok: false })); UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor, with picture, video, music and PDF workspaces.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nVideo (FFmpeg): ${ff.ok ? ff.version.replace(/ Copyright.*$/, '') : 'not found'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`); });
+  C('help.about', 'About Opia', '', async () => { const ff = await api('video_ffmpeg').catch(() => ({ ok: false })); UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first creative suite: Lens for photos, Imagine for pictures, Motion for video, Groove for music and Folio for PDFs.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nVideo (FFmpeg): ${ff.ok ? ff.version.replace(/ Copyright.*$/, '') : 'not found'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`); });
 }
 
 function buildMenus() {
@@ -204,9 +204,9 @@ async function start() {
     $('#identity').replaceChildren(Identity.el()); $('#identity').ondblclick = () => Identity.edit(); $('#identity').title = 'Double-click to customise the identity plate';
     const pick = $('#modpick'); for (const m of MODULES) { App.addModule(m); pick.append(h('a', { data: { m: m.id }, onclick: () => App.show(m.id) }, m.name)); }
     App.addModule(Music); App.addModule(Pdf); App.addModule(ImgEd); App.addModule(Vid);
-    const WORKSPACES = [['image', 'Image', 'Paint, combine pictures in layers, add text, fix colours'], ['video', 'Video', 'Edit video on a timeline and export an MP4'], ['music', 'Music', 'Make and edit music'], ['pdf', 'PDF', 'Read, sign, mark up and rearrange PDFs']];
+    const WORKSPACES = [['image', 'Imagine', 'Imagine: paint, combine pictures in layers, add text, fix colours'], ['video', 'Motion', 'Motion: edit video on a timeline and export an MP4'], ['music', 'Groove', 'Groove: make and edit music'], ['pdf', 'Folio', 'Folio: read, sign, mark up and rearrange PDFs']];
     const own = id => WORKSPACES.some(w => w[0] === id);
-    const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg' }, h('a', { class: !own(App.module) ? 'on' : '', title: 'Organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Photos'),
+    const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg', data: { notr: 1 } }, h('a', { class: !own(App.module) ? 'on' : '', title: 'Lens: organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Lens'),
       WORKSPACES.map(([id, label, tip]) => h('a', { class: App.module === id ? 'on' : '', title: tip, onclick: () => App.show(id) }, label))));
     App.on('module', id => { if (!own(id)) App.lastPhoto = id; apps(); buildMenus(); dispatchEvent(new Event('resize')); });
     Dev.el = UI.shell('develop'); Dev.init(Dev.el); GLR.init(Dev.cv);

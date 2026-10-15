@@ -30,7 +30,7 @@ const IE_TOOLS = [
 const IE_SIZES = [['Screen (1920 × 1080)', 1920, 1080], ['Square post (1080 × 1080)', 1080, 1080], ['Portrait post (1080 × 1350)', 1080, 1350], ['Story (1080 × 1920)', 1080, 1920], ['A4 page at 300 dpi', 2480, 3508], ['Letter page at 300 dpi', 2550, 3300], ['Small (800 × 600)', 800, 600]];
 
 const ImgEd = {
-  id: 'image', name: 'Image', exclusive: true, doc: null, tool: 'brush', undo: [], redo: [], gen: 0, view: { s: 1, ox: 0, oy: 0 }, fit: true,
+  id: 'image', name: 'Imagine', exclusive: true, doc: null, tool: 'brush', undo: [], redo: [], gen: 0, view: { s: 1, ox: 0, oy: 0 }, fit: true,
   style: { fg: '#1d1d1f', bg: '#ffffff', size: 24, hard: .8, flow: 1, tol: 32, contiguous: true, all: false, font: IE_FONTS[0][0], fsize: 64, bold: false, italic: false, align: 'left', shape: 'rect', fill: true, stroke: false, lw: 6, radius: 0, selMode: 'new', grad: 'fg' },
   clip: null, sel: null, tf: null, cropR: null, paintOp: null, preview: null, editing: null, space: false, ptr: null,
 
@@ -131,9 +131,9 @@ const ImgEd = {
     if (files.length > 1) await this.place(files.slice(1));
   },
   async openPath(path) { await this.openFiles([{ path, name: path.split(/[\\/]/).pop() }]); },
-  /* open a photo from the Photos catalog, with its Develop edits */
+  /* open a photo from the Lens catalog, with its Develop edits */
   async fromPhoto(p) {
-    if (!p) return UI.toast('Pick a photo in Photos first.');
+    if (!p) return UI.toast('Pick a photo in Lens first.');
     App.show('image');
     if (!await this.leave()) return;
     const c = await Exporter.render(p, {}), d = this.makeDoc(c.width, c.height, p.filename.replace(/\.[^.]+$/, '') + ' edit');
@@ -839,7 +839,7 @@ const ImgEd = {
     const cat = h('input', { type: 'checkbox', checked: !!d.fromPhoto || App.conf('img_cat', false) });
     const showQ = () => { q.style.display = ['jpeg', 'webp'].includes(fmtSel.value) ? '' : 'none'; }; fmtSel.onchange = showQ; showQ();
     const ext = () => ({ png: '.png', jpeg: '.jpg', webp: '.webp', tiff: '.tif' })[fmtSel.value];
-    const r = await this.ask('Export Picture', ext, h('div', { class: 'pd-form' }, h('label', { class: 'frow' }, h('span', {}, 'Format'), fmtSel), q, h('label', { class: 'frow adv' }, h('span', {}, 'Size'), scale), h('label', { class: 'fcheck' }, cat, 'Add it to the Photos catalog'), h('p', { class: 'dim' }, 'Export makes one flat picture with every visible layer. Keep a project too if you want to change the layers later.')));
+    const r = await this.ask('Export Picture', ext, h('div', { class: 'pd-form' }, h('label', { class: 'frow' }, h('span', {}, 'Format'), fmtSel), q, h('label', { class: 'frow adv' }, h('span', {}, 'Size'), scale), h('label', { class: 'fcheck' }, cat, 'Add it to the Lens catalog'), h('p', { class: 'dim' }, 'Export makes one flat picture with every visible layer. Keep a project too if you want to change the layers later.')));
     if (!r) return;
     App.setConf('img_fmt', fmtSel.value); App.setConf('img_q', q.get()); App.setConf('img_cat', cat.checked);
     this.composite(); let cv = this.comp; const k = +scale.value / 100; if (k < 1) { const s = this.canvas(d.w * k, d.h * k), g = s.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(cv, 0, 0, s.width, s.height); cv = s; }
@@ -854,8 +854,8 @@ const ImgEd = {
   drawWelcome() {
     $$('.ie-welcome', this.port).forEach(x => x.remove()); this.g.setTransform(1, 0, 0, 1, 0, 0); this.g.clearRect(0, 0, this.cv.width, this.cv.height); this.og.setTransform(1, 0, 0, 1, 0, 0); this.og.clearRect(0, 0, this.ov.width, this.ov.height);
     const recent = App.conf('img_recent', []);
-    this.port.append(h('div', { class: 'pd-welcome ie-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-image-icon.svg', alt: '' }), h('h2', {}, 'Image'), h('p', { class: 'dim' }, 'Paint, cut out, combine pictures in layers, add text and shapes, and fix colours. Open a picture, start a blank one, or bring in a photo from Photos.'),
-      h('div', { class: 'pd-big' }, this.btn('Open a Picture…', () => this.open(), null, 'primary big'), this.btn('New Blank Picture…', () => this.newDoc(), null, 'big'), this.btn('Edit the Selected Photo', () => this.fromPhoto(App.cur()), 'Open the photo that is selected in Photos, with its Develop edits.', 'big')),
+    this.port.append(h('div', { class: 'pd-welcome ie-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-image-icon.svg', alt: '' }), h('h2', {}, 'Imagine'), h('p', { class: 'dim' }, 'Paint, cut out, combine pictures in layers, add text and shapes, and fix colours. Open a picture, start a blank one, or bring in a photo from Lens.'),
+      h('div', { class: 'pd-big' }, this.btn('Open a Picture…', () => this.open(), null, 'primary big'), this.btn('New Blank Picture…', () => this.newDoc(), null, 'big'), this.btn('Edit the Selected Photo', () => this.fromPhoto(App.cur()), 'Open the photo that is selected in Lens, with its Develop edits.', 'big')),
       h('p', { class: 'dim' }, 'Or drop a picture here, or paste one with Ctrl+V.'),
       recent.length ? h('div', { class: 'pd-recent' }, h('div', { class: 'fsec' }, 'Opened recently'), recent.map(p => h('a', { title: p, data: { notr: 1 }, onclick: () => this.openPath(p).catch(UI.error) }, p.split(/[\\/]/).pop()))) : null));
   },
@@ -866,7 +866,7 @@ const ImgEd = {
     this.bar.replaceChildren(
       this.btn('Open…', () => this.open(), 'Open a picture or a saved project.'), this.btn('New…', () => this.newDoc(), 'Start a blank picture.', 'adv'),
       this.btn(d.dirty ? 'Save *' : 'Save', () => this.save(), 'Save a project that keeps the layers, so you can carry on later. The picture you opened is not changed.', d.dirty ? 'primary' : ''),
-      this.btn('Export…', () => this.exportPic(), 'Save a finished picture (PNG, JPEG, WebP or TIFF) to use anywhere. It can go straight into your Photos catalog.'), sep(),
+      this.btn('Export…', () => this.exportPic(), 'Save a finished picture (PNG, JPEG, WebP or TIFF) to use anywhere. It can go straight into your Lens catalog.'), sep(),
       h('b', { class: 'mu-name', title: 'Double-click to rename', data: { notr: 1 }, ondblclick: async () => { const n = await UI.prompt('Rename', 'Name', d.name); if (n) { d.name = n.replace(/[\\/:*?"<>|]/g, ''); d.path = null; this.drawBar(); } } }, d.name), h('span', { class: 'dim' }, d.w + ' × ' + d.h), sep(),
       h('button', { class: 'btn', title: 'Zoom out', onclick: () => this.zoomBy(.8) }, '−'), h('span', { class: 'pd-zoom', title: 'Fit the picture to the window (Ctrl+0)', onclick: () => this.setZoom('fit') }, z + '%'), h('button', { class: 'btn', title: 'Zoom in', onclick: () => this.zoomBy(1.25) }, '+'),
       h('button', { class: 'btn adv', title: 'Actual pixels (Ctrl+1)', onclick: () => this.setZoom(1) }, '1:1'),

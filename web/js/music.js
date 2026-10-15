@@ -20,7 +20,7 @@ const MU_TIPS = {
 };
 
 const Music = {
-  id: 'music', name: 'Music', exclusive: true, song: null, files: new Map(), sel: null, clipSel: null, range: null, cursor: 0, pps: 40, undo: [], redo: [], grids: [], clipboard: null, rec: null, spec: false, snap: true, multi: new Set(),
+  id: 'music', name: 'Groove', exclusive: true, song: null, files: new Map(), sel: null, clipSel: null, range: null, cursor: 0, pps: 40, undo: [], redo: [], grids: [], clipboard: null, rec: null, spec: false, snap: true, multi: new Set(),
 
   /* ---- song lifecycle */
   blank(name) { return { name, bpm: 100, key: 9, scale: 'minor', bars: 4, vol: .9, prog: null, tracks: [] }; },

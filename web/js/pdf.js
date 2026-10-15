@@ -29,7 +29,7 @@ const PD_TOOLS = [
 ];
 
 const Pdf = {
-  id: 'pdf', name: 'PDF', exclusive: true, doc: null, srcs: new Map(), view: 'edit', zoom: 'fit', tool: 'select', sel: null, cur: 0, picked: new Set(), last: null,
+  id: 'pdf', name: 'Folio', exclusive: true, doc: null, srcs: new Map(), view: 'edit', zoom: 'fit', tool: 'select', sel: null, cur: 0, picked: new Set(), last: null,
   undo: [], redo: [], hits: [], hit: -1, q: '', boxes: new Map(), thumbs: new Map(), pending: null,
   style: { color: '#e5322d', hl: '#ffe14d', size: 14, lw: 2, font: 'sans' },
 
@@ -197,7 +197,7 @@ const Pdf = {
   },
   welcome() {
     const recent = App.conf('pdf_recent', []);
-    return h('div', { class: 'pd-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-pdf-icon.svg', alt: '' }), h('h2', {}, 'PDF'), h('p', { class: 'dim' }, 'Read a PDF, fill it in, sign it, highlight it, or put its pages in a new order. Open several files at once to combine them into one.'),
+    return h('div', { class: 'pd-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-pdf-icon.svg', alt: '' }), h('h2', {}, 'Folio'), h('p', { class: 'dim' }, 'Read a PDF, fill it in, sign it, highlight it, or put its pages in a new order. Open several files at once to combine them into one.'),
       h('div', { class: 'pd-big' }, this.btn('Open a PDF…', () => this.open(), null, 'primary big'), this.btn('Combine Files…', () => this.open(), null, 'big'), this.btn('Pictures to PDF…', () => this.open(), null, 'big')),
       h('p', { class: 'dim' }, 'Or drop files anywhere in this window.'),
       recent.length ? h('div', { class: 'pd-recent' }, h('div', { class: 'fsec' }, 'Saved recently'), recent.map(p => h('a', { title: p, data: { notr: 1 }, onclick: () => this.openRecent(p).catch(UI.error) }, p.split(/[\\/]/).pop()))) : null);

@@ -3,6 +3,24 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Workspaces renamed: Lens, Imagine, Motion, Groove, Folio (cloud session, 2026-10-15)
+
+You picked new names: **Photos → Lens, Image → Imagine, Video → Motion, Music → Groove, PDF → Folio**.
+
+**Changed**
+- The workspace switch in the top bar, its hover text ("Lens: organise and edit photos"...), the welcome-screen headings, the tour, and the About box.
+- Messages and menu items that named a workspace: *Photo › Edit in Imagine* (was Edit in Image Editor), *Edit Frame in Imagine*, *Make a Video in Motion*, "Add it to the Lens catalog", "Pick a photo in Lens first", and so on.
+- The workspace names are never translated: Spanish shows the same five names. Without this, "Lens" would have shown as "Objetivo", because the camera-lens metadata field already uses that word. The rest of the new text has Spanish versions.
+- The icon files' accessible names now say Lens / Imagine / Motion / Groove / Folio.
+- README: headings, links, the shortcut table, the limits and credits use the new names. The banner and all six screenshots were taken again so they show the new names.
+
+**Kept as they were, on purpose**
+- Folders on disk: `Pictures\Opia\Music\<song>` and `Pictures\Opia\Video\<project>`. Renaming them would hide your existing songs and projects. The README calls them Groove songs and Motion projects.
+- Internal identifiers (`image`, `video`, `music`, `pdf`), so saved settings, custom shortcuts and projects all keep working.
+- Menu titles that describe actions rather than the workspace, such as the "Image" menu in Imagine (image size, rotate...), "Export Video…", and the "Photo" menu in Lens.
+
+**Tested**: every workspace opens with its new name and its menus; the switch keeps the five names in Spanish; no page errors.
+
 ## A nicer GitHub front page (cloud session, 2026-10-15)
 
 **Changed**: `README.md` is rewritten as a product page:
