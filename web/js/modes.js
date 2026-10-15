@@ -22,7 +22,7 @@ const Modes = {
     document.body.classList.toggle('beginner', b); document.body.classList.toggle('trackpad', t);
     $('#modes').replaceChildren(
       h('span', { class: 'seg' }, opt(true, 'Beginner', 'Show the essentials and tuck specialist tools away'), opt(false, 'Advanced', 'Show every panel and tool')),
-      h('label', { class: 'tb-check', title: 'Trackpad-friendly controls: two fingers pan, pinch zooms, bigger sliders', onclick: () => this.set('trackpad', !t) }, h('span', { class: 'switch' + (t ? ' on' : '') }), 'Trackpad'));
+      h('span', { class: 'tb-check', role: 'switch', tabindex: 0, 'aria-checked': String(t), title: 'Trackpad-friendly controls: two fingers pan, pinch zooms, bigger sliders', onclick: () => this.set('trackpad', !t), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); this.set('trackpad', !t); } } }, h('span', { class: 'switch' + (t ? ' on' : ''), 'aria-hidden': 'true' }), 'Trackpad'));
     dispatchEvent(new Event('resize'));
   },
 };

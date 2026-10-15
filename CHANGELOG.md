@@ -3,6 +3,55 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Bug check and accessibility check, whole app (cloud session, 2026-10-15)
+
+**How it was checked**
+- Python: pyflakes on `server/`, `run.py` and the plug-ins. Nothing found apart from imports that are there on purpose (they register the API) and one unused variable in `catalog.py`.
+- JavaScript: syntax check and ESLint (recommended rules, with every file's shared names declared) on all 22 files in `web/js`. No errors.
+- A browser sweep that ran **every menu command in every workspace**: all seven Photos modules, plus Image (with a picture open), Video (with a project open), PDF (with a document open) and Music. It watched for page errors, console errors, server errors (HTTP 5xx) and red error messages.
+- axe-core 4.10 (an automated accessibility checker) on every workspace in Opia Dark, and on Library, Image and Video in the light themes. It was also run on a menu, the New Picture dialog and the Export and Export Video dialogs.
+- Keyboard-only tests: menus, dialogs, the Image layer list, Video timeline clips and media, and sliders.
+- Every earlier Image and Video test, run again afterwards.
+
+**Bugs fixed**
+- Folder pickers failed with "Cannot read ... (No such file or directory)" when their starting folder did not exist yet. For example, Save Frame as Picture before the first export, because `Opia Exports` did not exist. They now start from the nearest folder that does exist. Found by the sweep; it affects every folder and file picker in the app.
+- Video: a picture or title clip could not be stretched to the left beyond where it started. Its left edge was limited as if it were a video file.
+- Video: two clips of the same unplayable file could make the same preview copy at the same time and spoil it. Now one copy is made at a time per file.
+- Image: the undo history's memory limit was computed wrongly, and could throw away too much or too little history. It now counts each stored canvas once.
+- Keyboard: on a focused slider, the arrow keys did something else (nudge, seek) instead of moving the slider. On a focused button, Enter or Space ran the workspace's shortcut (for example Image's Enter = apply) instead of pressing the button. Both are fixed for the whole app.
+
+**Accessibility fixed**: axe found about 1,300 problems before, and **0 after**, on every screen it checked.
+- Contrast: the dim grey text was 2.7-3.0:1 in every theme (the standard minimum is 4.5:1). It is now at least 4.6:1 on every panel colour. New values: Opia Dark #98979b, Midnight #929fa9, Porcelain #656259, Lilac #645f7d. The dim text is a little brighter in the dark themes and a little darker in the light ones.
+- Accent colours that were too pale for their text were made deeper:
+  - Porcelain gold: #94701f and #74530a.
+  - Lilac violet: #6a4bef.
+  - Light-theme PDF blue: #0f75b0 and #0a5f92.
+  - Light-theme Music coral: #c4381d and #a8301a.
+  - Light-theme Video amber: #9a5c00 and #7d4e00.
+  - In Opia Dark, Music's coral buttons now have dark text instead of white; white on coral was 3.1:1.
+  - The Record button's red is lighter.
+  - Dim text inside selected photo cells now uses the normal text colour.
+- Names for screen readers: every slider, text box, dropdown and colour picker now has a name. Most are given directly; the new `web/js/a11y.js` takes the rest from the label next to them. Buttons that show only a symbol (×, ↶, ⏮) are named from their hover text. Photo thumbnails are described by their file name, the print and web preview frames have titles, and the canvases are named. Aria-labels are translated into Spanish like titles are.
+- Page structure: a navigation landmark for the menus, a banner for the top bar, a main area with a hidden "Opia" heading, regions for the filmstrip and tether bar, and a live region so messages are read out (errors as alerts).
+- Keyboard:
+  - Everything that responds to a click can now be reached with Tab and pressed with Enter or Space. This is done once in `h()` in `core.js`, so it covers every workspace.
+  - A visible focus ring shows where the keyboard is.
+  - F10 jumps to the menu bar. Left and Right move between menus; Enter or Down opens one. Up, Down, Home and End move through the items, Enter picks one, and Escape or Left closes it and returns focus.
+  - Dialogs are announced as dialogs, put focus on the first field (or the main button), keep Tab inside the dialog, and return focus to where it was when they close.
+  - The Trackpad switch is a real switch that can be reached by keyboard.
+- Image: the tool buttons say which one is selected and name their shortcut key. The layer list is a list: Up and Down pick a layer, Space shows or hides it, Alt+Up and Alt+Down move it. The colour squares have names.
+- Video:
+  - Timeline clips can be reached with Tab and are read as, for example, "Video clip.mp4, from 0:02, 4.0 seconds". Enter picks one (Shift+Enter adds it to the selection).
+  - Alt+Left and Alt+Right move the selected clips by a frame (with Shift, by a second).
+  - Enter on an item in the media list adds it to the timeline.
+  - The timeline and PDF page areas are labelled regions.
+
+**Limits, honestly**
+- Automated checkers like axe find roughly a third to a half of real accessibility problems. Nothing was tested with an actual screen reader (NVDA, Narrator or JAWS) or in the Windows exe.
+- Painting, selecting, cropping and placing things on the picture are mouse, pen or touch actions. Keyboard users can move layers, transform them with the arrow keys and run every command from the menus, but cannot paint or draw freehand. The same goes for drawing on PDF pages and for trimming video clips by dragging (clip length can be typed in Details instead).
+- Most hover-help cards are still English-only, as before.
+- The sweep runs each command once, from a default state. It is not a test of every option inside every dialog.
+
 ## Icons for Image and Video (cloud session, 2026-10-15)
 
 Three icon options were drawn for each workspace in the style of the existing ones (dark tile, cream ring, one coloured accent). You picked **Image C (crop marks)** and **Video B (film strip)**.

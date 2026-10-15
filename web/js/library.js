@@ -274,7 +274,7 @@ const Lib = {
       ondragend: () => { this.dragging = false; },
     },
       h('div', { class: 'c-top' }, h('span', { class: 'idx' }, i + 1), h('span', { class: 'fn', title: p.path }, p.filename + (p.copy_name ? ' • ' + p.copy_name : ''))),
-      h('div', { class: 'c-img' }, h('img', { src: App.thumb(p), draggable: false, loading: 'lazy' }),
+      h('div', { class: 'c-img' }, h('img', { src: App.thumb(p), draggable: false, loading: 'lazy', alt: p.filename }),
         flag, p._stackN > 1 ? h('b', { class: 'stack', title: 'Stack of ' + p._stackN + ' (click to expand/collapse)', onclick: e => { e.stopPropagation(); Lib.toggleStack(p); } }, p._stackI === 0 ? p._stackN : (p._stackI + 1) + '/' + p._stackN) : null,
         p.master_id ? h('b', { class: 'vc', title: 'Virtual copy' }) : null,
         h('b', { class: 'tgt' + (App.inTarget(p) ? ' on' : ''), title: 'Target / Quick Collection (B)', onclick: e => { e.stopPropagation(); App.quickToggle([p.id]); } }),
@@ -299,7 +299,7 @@ const Lib = {
     const rows = Math.ceil(n / best.cols);
     el.style.gridTemplateColumns = `repeat(${best.cols}, 1fr)`; el.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
     el.replaceChildren(...ps.map(p => {
-      const img = h('img', { src: App.thumb(p), draggable: false });
+      const img = h('img', { src: App.thumb(p), draggable: false, alt: p.filename });
       Render.url(p, 1280).then(u => { img.src = u; }).catch(() => {});
       return h('div', { class: 'sv' + (p.id === App.active ? ' act' : ''), onclick: () => { App.active = p.id; App.emit('selection'); }, oncontextmenu: e => Lib.photoMenu(e) }, img,
         h('div', { class: 'sv-bar' }, h('span', { class: 'stars' }, [1, 2, 3, 4, 5].map(k => h('i', { class: k <= p.rating ? 'on' : '', onclick: e => { e.stopPropagation(); App.setMeta([p.id], { rating: p.rating === k ? 0 : k }, true); } }, '★'))),
@@ -519,7 +519,7 @@ const Film = {
         c = h('div', { class: 'fcell' + (App.selection.has(p.id) ? ' sel' : '') + (p.id === App.active ? ' act' : '') + (p.flag === -1 ? ' rej' : ''), draggable: true, style: p.label ? { '--lab': LABELS[p.label], borderBottomColor: LABELS[p.label] } : null,
           onmousedown: e => { if (e.button === 2 && App.selection.has(p.id)) return; App.select(p.id, e); }, ondblclick: () => { if (App.module === 'library') Lib.setView('loupe'); }, oncontextmenu: e => Lib.photoMenu(e),
           ondragstart: e => { e.dataTransfer.setData('text/opia-photos', JSON.stringify(App.selIds())); e.dataTransfer.effectAllowed = 'copyMove'; } },
-          h('img', { src: App.thumb(p), draggable: false }), p.flag ? h('b', { class: 'flag f' + p.flag }, '⚑') : null, p.rating ? h('span', { class: 'fst' }, '★'.repeat(p.rating)) : null,
+          h('img', { src: App.thumb(p), draggable: false, alt: p.filename }), p.flag ? h('b', { class: 'flag f' + p.flag }, '⚑') : null, p.rating ? h('span', { class: 'fst' }, '★'.repeat(p.rating)) : null,
           p._stackN > 1 ? h('b', { class: 'stack' }, p._stackN) : null, p.master_id ? h('b', { class: 'vc' }) : null, App.isEdited(p) ? h('b', { class: 'bd ed' }, '±') : null);
         this.cells.set(p.id, c); this.space.append(c);
       }

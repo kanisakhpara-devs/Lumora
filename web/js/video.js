@@ -19,7 +19,7 @@ const Vid = {
     el.left.remove(); el.right.remove(); el.center.classList.add('vd');
     this.bar = h('div', { class: 'mu-bar vd-bar' }); this.tools = h('div', { class: 'mu-tools vd-tools' });
     this.bin = h('div', { class: 'vd-bin' }); this.insp = h('div', { class: 'vd-insp' });
-    this.cv = h('canvas', { class: 'vd-cv' }); this.g = this.cv.getContext('2d'); this.screen = h('div', { class: 'vd-screen' }, this.cv);
+    this.cv = h('canvas', { class: 'vd-cv', role: 'img', 'aria-label': 'Video preview' }); this.g = this.cv.getContext('2d'); this.screen = h('div', { class: 'vd-screen' }, this.cv);
     this.transport = h('div', { class: 'vd-transport' });
     this.view = h('div', { class: 'vd-view' }, this.screen, this.transport);
     this.tl = h('div', { class: 'vd-tl' });
@@ -38,6 +38,7 @@ const Vid = {
       'Ctrl+Z': 'video.undo', 'Ctrl+Y': 'video.redo', 'Ctrl+Shift+Z': 'video.redo', 'Ctrl+I': 'video.import', 'Ctrl+Shift+E': 'video.export', 'Ctrl+N': 'video.new', 'T': 'video.title', 'Ctrl+A': () => this.selectAll(),
       'Home': () => this.seek(0), 'End': () => this.seek(this.total()), 'ArrowLeft': () => this.seek(this.t - 1 / this.p.fps), 'ArrowRight': () => this.seek(this.t + 1 / this.p.fps),
       'Shift+ArrowLeft': () => this.seek(this.t - 1), 'Shift+ArrowRight': () => this.seek(this.t + 1), 'ArrowUp': () => this.jump(-1), 'ArrowDown': () => this.jump(1),
+      'Alt+ArrowLeft': () => this.nudge(-1 / this.p.fps), 'Alt+ArrowRight': () => this.nudge(1 / this.p.fps), 'Alt+Shift+ArrowLeft': () => this.nudge(-1), 'Alt+Shift+ArrowRight': () => this.nudge(1),
       'Ctrl+=': () => this.zoom(1.4), 'Ctrl++': () => this.zoom(1.4), 'Ctrl+-': () => this.zoom(1 / 1.4), 'Ctrl+0': () => this.zoomFit(), 'Escape': () => { this.sel.clear(); this.draw(); },
     };
     this.draw();
@@ -168,6 +169,13 @@ const Vid = {
     this.sel.clear(); this.after(); this.sync(true);
   },
   duplicate() { const cs = this.picked(); if (!cs.length) return; this.mark(); const made = []; for (const c of cs) { const d = { ...clone(c), id: this.uid(), start: this.trackEnd(c.track), xfade: 0 }; this.p.clips.push(d); made.push(d.id); } this.sel = new Set(made); this.after(); },
+  /* move the picked clips along their tracks from the keyboard */
+  nudge(d) {
+    const cs = this.picked(); if (!cs.length) return; d = Math.max(d, -Math.min(...cs.map(c => c.start))); if (!d) return;
+    const last = this.undo[this.undo.length - 1]; if (!(this.nudging && performance.now() - this.nudging < 800 && last)) this.mark(); this.nudging = performance.now();
+    for (const c of cs) c.start += d; const f = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.id; this.after(false);
+    if (f) { const el = $(`.vd-clip[data-id="${f}"]`, this.tl); if (el) el.focus(); }
+  },
   selectAll() { if (this.p) { this.sel = new Set(this.p.clips.map(c => c.id)); this.drawTimeline(); this.drawInsp(); } },
   detachAudio() {
     const cs = this.picked().filter(c => c.kind === 'video' && c.audio && !c.mute); if (!cs.length) return UI.toast('Pick a video clip that has sound.');
@@ -329,14 +337,14 @@ const Vid = {
       this.btn(one && one.xfade ? 'Remove Crossfade' : 'Crossfade', () => this.crossfade(), 'Blend the picked clip into the one before it on the same track: it slides back one second and fades in over it.'),
       this.btn('Detach Sound', () => this.detachAudio(), 'Give a video clip\'s sound a clip of its own on an audio track, to trim or move it separately.', 'adv'), sep(),
       h('label', { class: 'fcheck vd-snap', title: 'Clips snap to each other and to the playhead. Hold Alt while dragging to place freely.' }, h('input', { type: 'checkbox', checked: this.snap, onchange: e => { this.snap = e.target.checked; } }), 'Snap'),
-      h('span', { class: 'dim' }, 'Zoom'), h('input', { type: 'range', class: 'vd-zoom', min: 0, max: 100, value: Math.round(Math.log(this.z / 4) / Math.log(200 / 4 * 10) * 100), oninput: e => this.setZ(4 * Math.pow(500, e.target.value / 100)) }),
+      h('span', { class: 'dim' }, 'Zoom'), h('input', { type: 'range', class: 'vd-zoom', 'aria-label': 'Timeline zoom', min: 0, max: 100, value: Math.round(Math.log(this.z / 4) / Math.log(200 / 4 * 10) * 100), oninput: e => this.setZ(4 * Math.pow(500, e.target.value / 100)) }),
       this.btn('Show All', () => this.zoomFit(), 'Show the whole timeline (Ctrl+0).'),
       h('span', { class: 'dim vd-hint' }, this.p.clips.length ? 'Drag clips to move them, their ends to trim. Click the ruler to move the playhead.' : 'Import media, then drag it from the list on the left onto a track.'));
   },
   drawBin() {
     if (!this.p) return; const ms = [...this.media.values()];
     this.bin.replaceChildren(h('div', { class: 'panel-h ie-ph' }, h('span', { class: 'pt', data: { tip: 'Everything imported into this project. Drag a file onto a track, or double-click it to add it at the end.' } }, 'Media')),
-      h('div', { class: 'vd-media' }, ms.length ? ms.map(m => h('div', { class: 'vd-m' + (m.missing ? ' missing' : ''), draggable: true, title: m.path, data: { notr: 1 },
+      h('div', { class: 'vd-media' }, ms.length ? ms.map(m => h('div', { class: 'vd-m' + (m.missing ? ' missing' : ''), draggable: true, title: m.path, data: { notr: 1 }, tabindex: 0, role: 'button', 'aria-label': m.name + ', ' + (m.kind === 'image' ? 'picture' : m.kind + ', ' + this.fmtT(m.dur)) + '. Enter adds it to the timeline.', onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); this.place(m); } },
         ondragstart: e => { e.dataTransfer.setData('text/opia-media', m.path); e.dataTransfer.effectAllowed = 'copy'; }, ondblclick: () => this.place(m),
         oncontextmenu: e => UI.menu(e.clientX, e.clientY, [{ label: 'Add to Timeline', run: () => this.place(m) }, { label: 'Show in Explorer', run: () => api('fs_reveal', { path: m.path }) }, { label: 'Remove from Project', run: () => { if (this.p.clips.some(c => c.src === m.path)) return UI.toast('It is used on the timeline. Delete those clips first.'); this.media.delete(m.path); this.saveSoon(); this.drawBin(); } }]) },
         h('div', { class: 'vd-mthumb ' + m.kind, style: m.kind === 'video' ? { backgroundImage: `url("/img/vstrip?path=${encodeURIComponent(m.play || m.path)}&n=1&h=72")` } : m.kind === 'image' ? { backgroundImage: `url("${this.mediaUrl(m.path)}")` } : null }, m.kind === 'audio' ? '♪' : ''),
@@ -372,14 +380,16 @@ const Vid = {
     const lanes = p.tracks.map(t => { const lane = h('div', { class: 'vd-lane ' + t.kind + (t.hide ? ' hid' : '') + (t.mute ? ' mut' : ''), style: { width: W + 'px' }, data: { track: t.id }, onpointerdown: e => { if (e.target === lane) { if (!e.ctrlKey && !e.shiftKey) { this.sel.clear(); this.drawInsp(); this.drawTools(); } this.scrub(e); } } });
       for (const c of p.clips.filter(c => c.track === t.id).sort((a, b) => a.start - b.start)) lane.append(this.clipEl(c));
       return lane; });
-    const lanesBox = h('div', { class: 'vd-lanes', onwheel: e => { if (e.ctrlKey) { e.preventDefault(); this.zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } } }, h('div', { class: 'vd-inner', style: { width: W + 'px' } }, ruler, lanes, h('div', { class: 'vd-head' })));
+    const lanesBox = h('div', { class: 'vd-lanes', tabindex: -1, role: 'region', 'aria-label': 'Timeline. Tab moves between clips; Enter picks one; Alt+Left and Alt+Right move it by a frame, with Shift by a second.', onwheel: e => { if (e.ctrlKey) { e.preventDefault(); this.zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } } }, h('div', { class: 'vd-inner', style: { width: W + 'px' } }, ruler, lanes, h('div', { class: 'vd-head' })));
     lanesBox.addEventListener('scroll', () => { const hs = $('.vd-heads', this.tl); if (hs) hs.scrollTop = lanesBox.scrollTop; });
     this.tl.replaceChildren(h('div', { class: 'vd-heads' }, h('div', { class: 'vd-rh' }, h('a', { class: 'adv', title: 'Add a video track', onclick: () => this.addTrack('video') }, '+ V'), h('a', { class: 'adv', title: 'Add an audio track', onclick: () => this.addTrack('audio') }, '+ A')), heads), lanesBox);
     lanesBox.scrollLeft = sx; lanesBox.scrollTop = sy; this.drawHead();
   },
   clipEl(c) {
     const z = this.z, m = this.media.get(c.src), w = Math.max(2, c.dur * z), miss = c.kind !== 'title' && (!m || m.missing);
-    const el = h('div', { class: 'vd-clip ' + c.kind + (this.sel.has(c.id) ? ' sel' : '') + (miss ? ' missing' : '') + (c.mute ? ' muted' : ''), style: { left: c.start * z + 'px', width: w + 'px' }, data: { id: c.id }, onpointerdown: e => this.clipDown(e, c, el) },
+    const el = h('div', { class: 'vd-clip ' + c.kind + (this.sel.has(c.id) ? ' sel' : '') + (miss ? ' missing' : '') + (c.mute ? ' muted' : ''), style: { left: c.start * z + 'px', width: w + 'px' }, data: { id: c.id }, onpointerdown: e => this.clipDown(e, c, el),
+      tabindex: 0, role: 'button', 'aria-pressed': String(this.sel.has(c.id)), 'aria-label': ({ video: 'Video', image: 'Picture', title: 'Title', audio: 'Sound' })[c.kind] + ' ' + (c.kind === 'title' ? ((c.title && c.title.text) || '') : c.name) + ', from ' + this.fmtT(c.start) + ', ' + c.dur.toFixed(1) + ' seconds',
+      onkeydown: e => { if (e.target === el && (e.key === 'Enter' || e.key === ' ') && !e.ctrlKey) { e.preventDefault(); e.stopPropagation(); if (e.shiftKey) { this.sel.has(c.id) ? this.sel.delete(c.id) : this.sel.add(c.id); } else this.sel = new Set([c.id]); this.seek(c.start); this.drawTimeline(); this.drawInsp(); this.drawTools(); const f = $(`.vd-clip[data-id="${c.id}"]`, this.tl); if (f) f.focus(); } } },
       h('span', { class: 'vd-cname', data: { notr: 1 } }, c.kind === 'title' ? '“' + ((c.title && c.title.text) || 'Title').split('\n')[0] + '”' : c.name));
     if (c.kind === 'video' && m && w > 30) { const n = clamp(Math.round(w / 72), 1, 24); el.style.backgroundImage = `url("/img/vstrip?path=${encodeURIComponent(m.play || c.src)}&n=${n}&h=44&a=${c.in.toFixed(1)}&b=${(c.in + c.dur).toFixed(1)}")`; }
     if (c.kind === 'image' && m) el.style.backgroundImage = `url("${this.mediaUrl(c.src)}")`;
@@ -412,7 +422,7 @@ const Vid = {
     const mv = ev => {
       const dt = (ev.clientX - x0) / z; if (!changed && Math.abs(ev.clientX - x0) < 3) return; if (!changed) { changed = true; this.mark(); }
       const skip = new Set(moving.map(x => x.id)), lim = c.max ? c.max : Infinity;
-      if (edge === 'l') { let s = this.snapTo(o.start + dt, skip, ev); s = clamp(s, Math.max(0, o.start - o.in), o.start + o.dur - .1); if (c.kind === 'image' || c.kind === 'title') s = clamp(s, 0, o.start + o.dur - .1); const d = s - o.start; c.start = s; c.in = c.kind === 'image' || c.kind === 'title' ? 0 : o.in + d; c.dur = o.dur - d; }
+      if (edge === 'l') { let s = this.snapTo(o.start + dt, skip, ev); const free = c.kind === 'image' || c.kind === 'title'; s = clamp(s, free ? 0 : Math.max(0, o.start - o.in), o.start + o.dur - .1); const d = s - o.start; c.start = s; c.in = c.kind === 'image' || c.kind === 'title' ? 0 : o.in + d; c.dur = o.dur - d; }
       else if (edge === 'r') { let end = this.snapTo(o.start + o.dur + dt, skip, ev); end = clamp(end, o.start + .1, c.kind === 'image' || c.kind === 'title' ? Infinity : o.start + (lim - o.in)); c.dur = end - o.start; }
       else {
         let d = dt; const snapS = this.snapTo(o.start + d, skip, ev), snapE = this.snapTo(o.start + o.dur + d, skip, ev) - o.dur; d = Math.abs(snapS - (o.start + d)) <= Math.abs(snapE - (o.start + d)) ? snapS - o.start : snapE - o.start;

@@ -148,7 +148,14 @@ def video_proxy(path, force=False):
         kind = 'audio'
     out = _proxy_path(path, kind)
 
+    with LOCK:
+        lock = PROXY_JOBS.setdefault(out, threading.Lock())
+
     def run(job):
+        with lock:                # two clips of the same file must not write the same copy at once
+            return make(job)
+
+    def make(job):
         if os.path.isfile(out) and not force:
             return {'play': out}
         job.total = max(1, int(info['dur']))

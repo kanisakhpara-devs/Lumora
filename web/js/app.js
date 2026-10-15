@@ -199,7 +199,7 @@ async function start() {
     App.boot = await api('boot'); App.cfg = App.boot.config || {};
     registerCommands(); Keymap.apply(); Modes.init(); buildMenus();
     $('#looks').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); UI.menu(r.right - 220, r.bottom + 6, looksMenu()); };
-    $('#brand').onclick = () => App.run('help.about');
+    $('#brand').onclick = () => App.run('help.about'); $('#brand').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); App.run('help.about'); } };
     new MutationObserver(() => $('#brand').classList.toggle('busy', $('#activity').children.length > 0)).observe($('#activity'), { childList: true });
     $('#identity').replaceChildren(Identity.el()); $('#identity').ondblclick = () => Identity.edit(); $('#identity').title = 'Double-click to customise the identity plate';
     const pick = $('#modpick'); for (const m of MODULES) { App.addModule(m); pick.append(h('a', { data: { m: m.id }, onclick: () => App.show(m.id) }, m.name)); }

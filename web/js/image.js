@@ -39,7 +39,7 @@ const ImgEd = {
     el.left.remove(); el.right.remove(); el.center.classList.add('ie');
     this.bar = h('div', { class: 'mu-bar ie-bar' }); this.opts = h('div', { class: 'mu-tools ie-opts' });
     this.box = h('div', { class: 'ie-toolbox' }); this.port = h('div', { class: 'ie-port' }); this.side = h('div', { class: 'ie-side' });
-    this.cv = h('canvas', { class: 'ie-cv' }); this.ov = h('canvas', { class: 'ie-ov' }); this.port.append(this.cv, this.ov);
+    this.cv = h('canvas', { class: 'ie-cv', 'aria-hidden': 'true' }); this.ov = h('canvas', { class: 'ie-ov', role: 'img', 'aria-label': 'The picture being edited' }); this.port.append(this.cv, this.ov);
     this.picker = h('input', { type: 'file', multiple: true, accept: 'image/*,.opiaimg,.tif,.tiff,.heic,.heif,.cr2,.cr3,.nef,.arw,.dng,.orf,.raf,.rw2', style: { display: 'none' } });
     el.center.append(this.bar, this.opts, h('div', { class: 'ie-stage' }, this.box, this.port, this.side), this.picker);
     for (const b of [this.bar, this.opts, this.box]) b.addEventListener('mousedown', e => { if (!e.target.closest('input,select,textarea')) e.preventDefault(); });
@@ -248,7 +248,12 @@ const ImgEd = {
   },
   mark(label) {
     if (!this.doc) return; this.undo.push(this.snap(label)); this.redo = []; this.gen++;
-    let px = 0; for (let k = this.undo.length - 1; k >= 0; k--) { px += this.undo[k].layers.reduce((a, L) => a + L.cv.width * L.cv.height, 0) / Math.max(1, this.undo.length - k); if (px > 400e6 || this.undo.length - k > 60) { this.undo.splice(0, k + 1); break; } }   // a rough cap on memory
+    /* keep the history within about 60 steps and 400 megapixels of canvases no longer in use (each canvas counted once) */
+    const live = new Set(this.doc.layers.map(L => L.cv)), seen = new Set(); let px = 0;
+    for (let k = this.undo.length - 1; k >= 0; k--) {
+      for (const L of this.undo[k].layers) if (!live.has(L.cv) && !seen.has(L.cv)) { seen.add(L.cv); px += L.cv.width * L.cv.height; }
+      if (px > 400e6 || this.undo.length - k > 60) { this.undo.splice(0, k + 1); break; }
+    }
   },
   step(from, to) {
     if (!this.doc || !from.length) return;
@@ -877,10 +882,10 @@ const ImgEd = {
       it('Blur…', () => this.blur()), it('Sharpen…', () => this.sharpen()), '-', it('Save As…', () => this.saveAs(), 1), it('Close Picture', () => this.close())].filter(Boolean);
   },
   drawBox() {
-    const s = this.style, tools = IE_TOOLS.map(([id, label, key, tip, adv]) => { const b = h('a', { class: 'ie-tool' + (this.tool === id ? ' on' : '') + (adv ? ' adv' : ''), onclick: () => this.setTool(id) }, h('i', { class: 'ie-ic ie-ic-' + id }), h('span', {}, label)); b.dataset.tip = tip + (key ? ' (' + key + ')' : ''); b.dataset.tipName = label; return b; });
+    const s = this.style, tools = IE_TOOLS.map(([id, label, key, tip, adv]) => { const b = h('a', { class: 'ie-tool' + (this.tool === id ? ' on' : '') + (adv ? ' adv' : ''), 'aria-pressed': String(this.tool === id), 'aria-keyshortcuts': key || null, onclick: () => this.setTool(id) }, h('i', { class: 'ie-ic ie-ic-' + id, 'aria-hidden': 'true' }), h('span', {}, label)); b.dataset.tip = tip + (key ? ' (' + key + ')' : ''); b.dataset.tipName = label; return b; });
     const pick = k => { const inp = h('input', { type: 'color', value: s[k], oninput: e => this.setStyle(k, e.target.value) }); inp.click(); };
     this.box.replaceChildren(...tools, h('div', { class: 'ie-colors', data: { tip: 'The left square is the colour you paint, fill and write with; the right one is the second colour, used by gradients and shape outlines. Click one to change it. X swaps them, D resets to black and white.', tipName: 'Colours' } },
-      h('span', { class: 'ie-fg', style: { background: s.fg }, onclick: () => pick('fg') }), h('span', { class: 'ie-bg', style: { background: s.bg }, onclick: () => pick('bg') }), h('b', { title: 'Swap (X)', onclick: () => this.keys.X() }, '⇄')));
+      h('span', { class: 'ie-fg', title: 'First colour ' + s.fg, style: { background: s.fg }, onclick: () => pick('fg') }), h('span', { class: 'ie-bg', title: 'Second colour ' + s.bg, style: { background: s.bg }, onclick: () => pick('bg') }), h('b', { title: 'Swap the colours (X)', onclick: () => this.keys.X() }, '⇄')));
   },
   drawOpts() {
     const s = this.style, t = this.tool, d = this.doc, sep = () => h('span', { class: 'mu-sep' }), out = [];
@@ -918,7 +923,7 @@ const ImgEd = {
   },
   drawSide() {
     const d = this.doc; if (!d) return this.side.replaceChildren();
-    const L = this.L, list = h('div', { class: 'ie-layers' }, [...d.layers].reverse().map(x => this.row(x)));
+    const L = this.L, list = h('div', { class: 'ie-layers', role: 'listbox', 'aria-label': 'Layers, top first. Up and Down pick a layer, Space shows or hides it, Alt+Up and Alt+Down move it.' }, [...d.layers].reverse().map(x => this.row(x)));
     this.side.replaceChildren(h('div', { class: 'panel-h ie-ph' }, h('span', { class: 'pt', data: { tip: 'A picture is a stack of layers, top to bottom. Tools work on the picked layer. Drag layers to reorder them; the eye hides one.' } }, 'Layers')),
       L ? h('div', { class: 'ie-lprops' },
         h('select', { class: 'adv', title: 'Blend mode: how this layer mixes with the ones below', onchange: e => this.setProp(L, 'blend', e.target.value, 'Blend mode') }, IE_BLENDS.map(([v, l]) => h('option', { value: v, selected: v === L.blend }, l))),
@@ -930,7 +935,8 @@ const ImgEd = {
   },
   row(L) {
     const d = this.doc, th = h('canvas', { class: 'ie-thumb', width: 48, height: 36 }); th.layer = L;
-    const r = h('div', { class: 'ie-layer' + (L.id === d.active ? ' on' : '') + (L.vis ? '' : ' off'), draggable: true, data: { id: L.id },
+    const r = h('div', { class: 'ie-layer' + (L.id === d.active ? ' on' : '') + (L.vis ? '' : ' off'), draggable: true, data: { id: L.id }, tabindex: 0, role: 'option', 'aria-selected': String(L.id === d.active), 'aria-label': L.name + (L.kind === 'pixel' ? '' : ', ' + L.kind + ' layer') + (L.vis ? '' : ', hidden'),
+      onkeydown: e => { if (e.target !== r) return; if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); r.click(); } else if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); this.setProp(L, 'vis', !L.vis, L.vis ? 'Hide layer' : 'Show layer'); const f = $(`.ie-layer[data-id="${L.id}"]`, this.side); if (f) f.focus(); } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); const rows = $$('.ie-layer', this.side), i = rows.indexOf(r), n = rows[clamp(i + (e.key === 'ArrowUp' ? -1 : 1), 0, rows.length - 1)]; if (e.altKey) this.moveLayer(e.key === 'ArrowUp' ? 1 : -1); else if (n) { n.click(); const f = $(`.ie-layer[data-id="${n.dataset.id}"]`, this.side); if (f) f.focus(); } if (e.altKey) { const f = $(`.ie-layer[data-id="${L.id}"]`, this.side); if (f) f.focus(); } } },
       onclick: () => { if (d.active === L.id) return; this.endText(); d.active = L.id; this.drawSide(); this.drawOpts(); this.drawOv(); },
       ondblclick: e => { if (e.target.closest('.ie-eye')) return; if (L.kind === 'text') this.editText(L); else this.renameLayer(L); },
       oncontextmenu: e => { d.active = L.id; this.drawSide(); UI.menu(e.clientX, e.clientY, [{ label: 'Rename…', run: () => this.renameLayer(L) }, { label: 'Duplicate', run: () => this.dupLayer() }, { label: 'Delete', run: () => this.delLayer() }, '-', { label: 'Select Its Pixels', run: () => this.layerToSel() }, { label: 'Merge Down', run: () => this.mergeDown() }, L.kind !== 'pixel' ? { label: 'Turn Into Pixels', run: () => this.pixels(L, 'paint on') } : null, '-', { label: 'Flip Horizontal', run: () => this.flipLayer(true) }, { label: 'Flip Vertical', run: () => this.flipLayer(false) }].filter(Boolean)); },
@@ -938,7 +944,7 @@ const ImgEd = {
       ondragover: e => { if (![...e.dataTransfer.types].includes('text/opia-layer')) return; e.preventDefault(); const b = r.getBoundingClientRect(); $$('.ie-layer', this.side).forEach(x => x.classList.remove('drop-a', 'drop-b')); r.classList.add(e.clientY < b.top + b.height / 2 ? 'drop-a' : 'drop-b'); },
       ondragleave: () => r.classList.remove('drop-a', 'drop-b'),
       ondrop: e => { const id = e.dataTransfer.getData('text/opia-layer'), M = this.layer(id); if (!M) return; e.preventDefault(); const above = r.classList.contains('drop-a'); r.classList.remove('drop-a', 'drop-b'); if (M === L) return; this.mark('Move layer'); const ls = d.layers; ls.splice(ls.indexOf(M), 1); ls.splice(ls.indexOf(L) + (above ? 1 : 0), 0, M); this.after(true); } },
-      h('a', { class: 'ie-eye', title: L.vis ? 'Hide this layer' : 'Show this layer', onclick: e => { e.stopPropagation(); this.setProp(L, 'vis', !L.vis, L.vis ? 'Hide layer' : 'Show layer'); } }, L.vis ? '◉' : '○'), th,
+      h('a', { class: 'ie-eye', role: 'none', 'aria-hidden': 'true', title: L.vis ? 'Hide this layer' : 'Show this layer', onclick: e => { e.stopPropagation(); this.setProp(L, 'vis', !L.vis, L.vis ? 'Hide layer' : 'Show layer'); } }, L.vis ? '◉' : '○'), th,
       h('span', { class: 'ie-lname', data: { notr: 1 } }, L.name), h('i', { class: 'ie-kind' }, L.kind === 'text' ? 'T' : L.kind === 'shape' ? '◇' : ''), L.blend !== 'source-over' || L.op < 1 ? h('i', { class: 'ie-kind adv' }, (L.op < 1 ? Math.round(L.op * 100) + '%' : '')) : null);
     return r;
   },

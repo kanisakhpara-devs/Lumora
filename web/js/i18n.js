@@ -137,7 +137,7 @@ const Lang = {
       this.busy = true;
       for (const m of muts) { if (m.type === 'characterData') this.node(m.target, true); else if (m.type === 'attributes') this.attrs(m.target); else m.addedNodes.forEach(n => this.walk(n)); }
       this.busy = false;
-    }).observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['title', 'placeholder'] });
+    }).observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['title', 'placeholder', 'aria-label'] });
   },
   /* translate one English string, tolerating a leading icon and a trailing colon or ellipsis */
   tr(s) {
@@ -158,7 +158,7 @@ const Lang = {
   },
   attrs(el) {
     if (el.nodeType !== 1) return;
-    for (const a of ['title', 'placeholder']) {
+    for (const a of ['title', 'placeholder', 'aria-label']) {
       const v = el.getAttribute(a); if (!v) continue;
       const store = this.attrOrig.get(el) || {}; if (store[a] && store[a].out === v) continue;
       const es = this.tr(v); if (es == null) continue;
@@ -168,13 +168,13 @@ const Lang = {
   walk(root) {
     if (root.nodeType === 3) return this.node(root);
     if (root.nodeType !== 1) return;
-    this.attrs(root); root.querySelectorAll('[title],[placeholder]').forEach(e => this.attrs(e));
+    this.attrs(root); root.querySelectorAll('[title],[placeholder],[aria-label]').forEach(e => this.attrs(e));
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) this.node(n);
   },
   restore(root) {
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n;
     while ((n = w.nextNode())) { const o = this.orig.get(n); if (o && n.nodeValue === o.out) n.nodeValue = o.src; this.orig.delete(n); }
-    root.querySelectorAll('[title],[placeholder]').forEach(el => { const s = this.attrOrig.get(el); if (!s) return; for (const [a, o] of Object.entries(s)) if (el.getAttribute(a) === o.out) el.setAttribute(a, o.src); this.attrOrig.delete(el); });
+    root.querySelectorAll('[title],[placeholder],[aria-label]').forEach(el => { const s = this.attrOrig.get(el); if (!s) return; for (const [a, o] of Object.entries(s)) if (el.getAttribute(a) === o.out) el.setAttribute(a, o.src); this.attrOrig.delete(el); });
   },
   set(lang) {
     this.busy = true; this.restore(document.body);

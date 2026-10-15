@@ -228,7 +228,7 @@ const Print = {
     if (this.st.printTo !== 'printer') return this.toFile();
     const [pw, ph] = this.paper(), urls = [];
     if (!(await this.renderAll(Math.min(this.st.ppi, 300), async cv => { urls.push(URL.createObjectURL(await Render.blob(cv, 'image/jpeg', 0.95))); }))) return;
-    const fr = h('iframe', { class: 'print-frame' }); document.body.append(fr);
+    const fr = h('iframe', { class: 'print-frame', title: 'Print' }); document.body.append(fr);
     const d = fr.contentDocument; d.open(); d.write(`<!doctype html><html><head><style>@page{size:${pw}in ${ph}in;margin:0}html,body{margin:0}img{display:block;width:${pw}in;height:${ph}in;page-break-after:always}</style></head><body>${urls.map(u => `<img src="${u}">`).join('')}</body></html>`); d.close();
     await Promise.all([...d.images].map(im => im.decode().catch(() => {})));
     fr.contentWindow.focus(); fr.contentWindow.print();
@@ -251,7 +251,7 @@ const WebMod = {
     showTitle: true, titleTpl: '{title}', showCaption: true, captionTpl: '{caption}', large: 1600, quality: 82, wm: false, wmPreset: 'Simple Copyright', meta: 'copyright', sharpen: true, ftp: { host: '', port: 21, user: '', pass: '', path: '', tls: false, passive: true }, subfolder: 'gallery' },
   init(el) {
     this.st = Mod.store('web', this.defaults);
-    this.frame = h('iframe', { class: 'web-frame', sandbox: 'allow-scripts allow-same-origin' }); this.tb = h('div', { class: 'toolbar' }); el.center.append(this.frame, this.tb);
+    this.frame = h('iframe', { class: 'web-frame', title: 'Web gallery preview', sandbox: 'allow-scripts allow-same-origin' }); this.tb = h('div', { class: 'toolbar' }); el.center.append(this.frame, this.tb);
     const form = h('div'), ch = debounce(() => { this.st._save(); this.preview(); }, 350), draw = () => form.replaceChildren(UI.form(this.spec(), this.st, ch));
     const strip = o => { const { _save, ftp, ...r } = o; return r; };
     el.left.append(UI.panel('Template Browser', h('div', {}, UI.presetBar('web_templates', () => strip(this.st), t => { Object.assign(this.st, t); draw(); ch(); }, { 'Classic Grid – Dark': strip(this.defaults), 'Classic Grid – Light': { ...strip(this.defaults), cText: '#222222', cBg: '#f5f5f3', cCell: '#ffffff', cBorder: '#dddddd', cAccent: '#1a6fd0', shadows: true }, 'Justified Wall': { ...strip(this.defaults), style: 'masonry', gap: 6, showTitle: false, showCaption: false }, 'Slideshow Gallery': { ...strip(this.defaults), style: 'slideshow' }, 'Paper White Squares': { ...strip(this.defaults), style: 'square', cText: '#333333', cBg: '#ffffff', cCell: '#ffffff', cBorder: '#eeeeee', gap: 4, cols: 5 } }),

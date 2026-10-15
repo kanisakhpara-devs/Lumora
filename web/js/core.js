@@ -20,6 +20,14 @@ function h(tag, attrs, ...kids) {
     else el.setAttribute(k, v);
   }
   for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));
+  if (attrs && attrs.onclick && CLICKABLE.has(tag) && !attrs.role && attrs.tabindex == null && !(tag === 'a' && attrs.href) && !el.querySelector('button,a,input,select,textarea,[tabindex]')) keyable(el);
+  return el;
+}
+/* Something clicked with the mouse can also be reached with Tab and pressed with Enter or Space. */
+const CLICKABLE = new Set(['a', 'span', 'div', 'i', 'b', 'li', 'figure', 'img']);
+function keyable(el, role = 'button') {
+  el.tabIndex = 0; el.setAttribute('role', role);
+  el.addEventListener('keydown', e => { if (e.target === el && (e.key === 'Enter' || e.key === ' ') && !e.ctrlKey && !e.altKey) { e.preventDefault(); e.stopPropagation(); el.click(); } });
   return el;
 }
 /* Let append / replaceChildren take nested arrays and skip null / false, the way h() does. */
@@ -69,7 +77,7 @@ async function runJob(start, title) {
 /* ------------------------------------------------------------------ UI toolkit */
 const UI = {
   toast(text, kind) {
-    const t = h('div', { class: 'toast ' + (kind || '') }, text);
+    const t = h('div', { class: 'toast ' + (kind || ''), role: kind === 'error' ? 'alert' : null }, text);
     $('#toasts').append(t);
     setTimeout(() => t.remove(), kind === 'error' ? 7000 : 3200);
   },
@@ -77,19 +85,28 @@ const UI = {
   /* Modal dialog. buttons: [[label, value, 'primary'?]]. A button value that is a function may return false to stay open. */
   dialog({ title, body, buttons = [['Close', null]], width = 520, onClose }) {
     return new Promise(resolve => {
-      const close = v => { ov.remove(); document.removeEventListener('keydown', key, true); onClose && onClose(v); resolve(v); };
-      const key = e => { if (e.key === 'Escape' && ov === $('#overlays').lastChild) { e.stopPropagation(); close(null); } };
+      const back = document.activeElement;
+      const close = v => { ov.remove(); document.removeEventListener('keydown', key, true); if (back && back.isConnected && back.focus) back.focus(); onClose && onClose(v); resolve(v); };
+      const key = e => {
+        if (ov !== $('#overlays').lastChild) return;
+        if (e.key === 'Escape') { e.stopPropagation(); close(null); }
+        else if (e.key === 'Tab') {      // keep the keyboard inside the dialog
+          const f = $$('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])', box).filter(x => !x.disabled && x.offsetParent); if (!f.length) return;
+          const i = f.indexOf(document.activeElement); if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (i === f.length - 1 || i < 0)) { e.preventDefault(); f[0].focus(); }
+        }
+      };
       const foot = h('div', { class: 'dlg-foot' }, buttons.map(([label, val, cls]) => h('button', {
         class: 'btn ' + (cls || ''), onclick: async () => {
           if (typeof val === 'function') { try { const r = await val(); if (r !== false) close(r === undefined ? true : r); } catch (e) { UI.error(e); } } else close(val);
         } }, label)));
-      const box = h('div', { class: 'dlg', style: { width: width + 'px' } }, h('div', { class: 'dlg-title' }, title, h('b', { onclick: () => close(null) }, '×')), h('div', { class: 'dlg-body' }, body), foot);
+      const tid = 'dlg' + Math.random().toString(36).slice(2, 8);
+      const box = h('div', { class: 'dlg', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': tid, style: { width: width + 'px' } }, h('div', { class: 'dlg-title' }, h('span', { id: tid }, title), h('b', { onclick: () => close(null), title: 'Close', 'aria-label': 'Close' }, '×')), h('div', { class: 'dlg-body' }, body), foot);
       const ov = h('div', { class: 'overlay', onmousedown: e => { if (e.target === ov) close(null); } }, box);
       ov.close = close;
       $('#overlays').append(ov);
       document.addEventListener('keydown', key, true);
-      const first = box.querySelector('input:not([type=checkbox]),textarea,select');
-      if (first) setTimeout(() => { first.focus(); first.select && first.select(); }, 30);
+      const first = box.querySelector('input:not([type=checkbox]),textarea,select') || foot.querySelector('.btn.primary') || foot.querySelector('button');
+      if (first) setTimeout(() => { if (!box.contains(document.activeElement)) { first.focus(); first.select && first.select(); } }, 30);
     });
   },
   confirm(title, text, ok = 'OK') { return UI.dialog({ title, body: h('p', { class: 'msg' }, text), buttons: [['Cancel', false], [ok, true, 'primary']], width: 420 }); },
@@ -98,19 +115,29 @@ const UI = {
     const inp = h('input', { type: 'text', value, onkeydown: e => { if (e.key === 'Enter') e.target.closest('.overlay').querySelector('.btn.primary').click(); } });
     return UI.dialog({ title, body: h('label', { class: 'frow' }, h('span', {}, label), inp), buttons: [['Cancel', null], ['OK', () => inp.value.trim() || false, 'primary']], width: 420 });
   },
-  menu(x, y, items) {
+  menu(x, y, items, opener) {
     $$('.menu').forEach(m => m.remove());
-    const m = h('div', { class: 'menu' });
+    const back = opener || document.activeElement;
+    const m = h('div', { class: 'menu', role: 'menu' });
     for (const it of items) {
       if (!it) continue;
       if (it === '-') { m.append(h('hr')); continue; }
-      m.append(h('div', { class: 'mi' + (it.disabled ? ' off' : ''), onclick: e => {
+      m.append(h('div', { class: 'mi' + (it.disabled ? ' off' : ''), role: it.checked != null ? 'menuitemcheckbox' : 'menuitem', tabindex: -1, 'aria-checked': it.checked != null ? String(!!it.checked) : null, 'aria-disabled': it.disabled ? 'true' : null, 'aria-haspopup': it.sub ? 'menu' : null, onclick: e => {
         if (it.disabled) return;
-        if (it.sub) { const r = e.currentTarget.getBoundingClientRect(); UI.menu(r.right - 6, r.top, typeof it.sub === 'function' ? it.sub() : it.sub); return; }
-        m.remove(); it.run && it.run(e);
-      } }, h('i', {}, it.checked ? '✓' : ''), h('span', {}, it.label), it.sub ? h('kbd', {}, '▸') : it.key ? h('kbd', {}, it.key) : null));
+        if (it.sub) { const r = e.currentTarget.getBoundingClientRect(); const s = UI.menu(r.right - 6, r.top, typeof it.sub === 'function' ? it.sub() : it.sub, back); s.parent = m; return; }
+        m.remove(); if (back && back.isConnected && back.focus) back.focus(); it.run && it.run(e);
+      } }, h('i', { 'aria-hidden': 'true' }, it.checked ? '✓' : ''), h('span', {}, it.label), it.sub ? h('kbd', { 'aria-hidden': 'true' }, '▸') : it.key ? h('kbd', {}, it.key) : null));
     }
+    /* arrow keys move through the items, Enter picks one, Escape closes */
+    m.addEventListener('keydown', e => {
+      const its = $$('.mi', m).filter(x => !x.classList.contains('off')), i = its.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); its[(i + (e.key === 'ArrowDown' ? 1 : its.length - 1)) % its.length].focus(); }
+      else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); e.stopPropagation(); its[e.key === 'Home' ? 0 : its.length - 1].focus(); }
+      else if (e.key === 'Enter' || e.key === ' ' || (e.key === 'ArrowRight' && document.activeElement.getAttribute('aria-haspopup'))) { e.preventDefault(); e.stopPropagation(); if (document.activeElement.closest('.menu') === m) document.activeElement.click(); }
+      else if (e.key === 'Escape' || e.key === 'ArrowLeft' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); m.remove(); if (m.parent && m.parent.isConnected) $('.mi', m.parent).focus(); else if (back && back.isConnected && back.focus) back.focus(); }
+    });
     document.body.append(m);
+    setTimeout(() => { const f = $$('.mi', m).find(x => !x.classList.contains('off')); if (f && (m.parent || (back && back.matches && back.matches('.mb, button, [role=button]')) || document.activeElement === document.body)) f.focus({ preventScroll: true }); }, 0);
     const r = m.getBoundingClientRect();
     m.style.left = Math.max(0, Math.min(x, innerWidth - r.width - 4)) + 'px';
     m.style.top = Math.max(0, Math.min(y, innerHeight - r.height - 4)) + 'px';
@@ -121,7 +148,7 @@ const UI = {
   panel(title, body, opts = {}) {
     const key = 'panel_' + (opts.key || title);
     let open = localStorage[key] ? localStorage[key] === '1' : !opts.closed;
-    const tools = h('span', { class: 'ph-tools', onclick: e => e.stopPropagation() }, opts.tools || []);
+    const tools = h('span', { class: 'ph-tools', role: 'none', onclick: e => e.stopPropagation() }, opts.tools || []);
     const head = h('div', { class: 'panel-h', onclick: () => { open = !open; localStorage[key] = open ? '1' : '0'; el.classList.toggle('closed', !open); } }, h('span', { class: 'tw' }), h('span', { class: 'pt', data: TIPS.panel[opts.key || title] ? { tip: TIPS.panel[opts.key || title] } : null }, title), tools);
     const el = h('div', { class: 'panel' + (open ? '' : ' closed') + (opts.cls ? ' ' + opts.cls : ''), data: { p: opts.key || title } }, head, h('div', { class: 'panel-b' }, body));
     el.body = el.lastChild;
@@ -131,8 +158,8 @@ const UI = {
   slider({ label, min = -100, max = 100, step = 1, value = 0, def = 0, oninput, onchange, cls, tip }) {
     tip = tip || TIPS.label[label];
     const digits = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(step) - 1e-9));
-    const rng = h('input', { type: 'range', min, max, step, value });
-    const num = h('input', { type: 'text', class: 'num', value: (+value).toFixed(digits) });
+    const rng = h('input', { type: 'range', min, max, step, value, 'aria-label': label });
+    const num = h('input', { type: 'text', class: 'num', value: (+value).toFixed(digits), 'aria-label': label + ' value' });
     const set = (v, fire) => { v = clamp(+v || 0, min, max); rng.value = v; num.value = (+v).toFixed(digits); if (fire === 'input') oninput && oninput(v); if (fire === 'change') { oninput && oninput(v); onchange && onchange(v); } };
     rng.oninput = () => set(rng.value, 'input');
     rng.onchange = () => onchange && onchange(+rng.value);
@@ -192,9 +219,13 @@ const UI = {
     const result = new Promise(res => { settle = v => { if (!settled) { settled = true; res(v); } }; });
     const ok = () => { const v = picked || (files ? null : cur); if (!v) return false; settle(v); return true; };
     const list = h('div', { class: 'fb-list' }), crumb = h('input', { type: 'text', class: 'fb-path', onkeydown: e => { if (e.key === 'Enter') { e.stopPropagation(); go(crumb.value); } } });
-    async function go(p) {
+    async function go(p, quiet) {
       let d;
-      try { d = await api('fs_list', { path: p || null, images: false }); } catch (e) { UI.error(e); return; }
+      try { d = await api('fs_list', { path: p || null, images: false }); } catch (e) {
+        const up = p && p.replace(/[\\/]+$/, '').replace(/[\\/][^\\/]*$/, '');      // a folder that does not exist yet: start from the nearest one that does
+        if (quiet !== false && p) return go(up && up !== p ? up : null, true);
+        UI.error(e); return;
+      }
       cur = d.path; crumb.value = cur; picked = null;
       list.replaceChildren();
       if (cur) list.append(h('div', { class: 'fb-i dir', ondblclick: () => go(d.parent) }, '↑  ..'));
@@ -513,6 +544,9 @@ const App = {
     const t = e.target;
     if (t.matches && t.matches('input:not([type=range]):not([type=checkbox]),textarea,select,[contenteditable]')) { if (e.key === 'Escape') t.blur(); return; }
     if ($('#overlays').children.length) return;
+    if (t.matches && t.matches('input[type=range]') && /^(Arrow|Home$|End$|Page)/.test(e.key) && !e.ctrlKey) return;     // a focused slider moves with the arrow keys
+    if (t.matches && t.matches('button, [role=button], [role=menuitem], a[href], input[type=checkbox]') && (e.key === 'Enter' || e.key === ' ') && !e.ctrlKey && !e.altKey) return;   // and a focused button presses
+    if (e.key === 'F10' && !e.ctrlKey && !e.altKey) { e.preventDefault(); const mb = $('#menubar .mb'); if (mb) mb.focus(); return; }   // F10 reaches the menus
     const name = this.keyName(e), m = this.modules[this.module];
     if (m && m.keys && m.keys[name]) { e.preventDefault(); const k = m.keys[name]; typeof k === 'string' ? this.run(k) : k(e); return; }
     if (m && m.exclusive && !/^(F11|Ctrl\+[,/]|Ctrl\+Alt\+.+)$/.test(name)) return;   // a workspace of its own: the photo shortcuts stay out of it
@@ -524,7 +558,7 @@ const App = {
     const bar = $('#menubar');
     bar.replaceChildren();
     for (const [title, items] of def) {
-      const el = h('span', { class: 'mb', onmousedown: e => {
+      const open = e => {
         e.preventDefault();
         const r = el.getBoundingClientRect();
         const list = (typeof items === 'function' ? items() : items).map(it => {
@@ -532,7 +566,11 @@ const App = {
           const c = this.commands[it];
           return c ? { label: c.label, key: c.key, checked: c.checked && c.checked(), run: () => this.run(it) } : null;
         });
-        UI.menu(r.left, r.bottom, list);
+        UI.menu(r.left, r.bottom, list, el);
+      };
+      const el = h('span', { class: 'mb', tabindex: 0, role: 'button', 'aria-haspopup': 'menu', onmousedown: open, onkeydown: e => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') open(e);
+        else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const all = $$('.mb', bar), i = all.indexOf(el); all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length].focus(); }
       } }, title);
       bar.append(el);
     }

@@ -233,11 +233,11 @@ const Pdf = {
     if (!d.pages.length) return this.stage.replaceChildren(h('div', { class: 'pd-welcome' }, h('p', { class: 'dim' }, 'Every page has been removed.'), h('div', { class: 'pd-big' }, this.btn('Add Files…', () => this.add(), null, 'primary big'), this.btn('Undo', () => this.step(this.undo, this.redo), null, 'big'))));
     this.cur = clamp(this.cur, 0, d.pages.length - 1);
     if (this.view === 'pages') {
-      const grid = h('div', { class: 'pd-grid pd-scroll', onclick: e => { if (e.target === grid) { this.picked.clear(); this.syncPicked(); } } }, d.pages.map((p, k) => this.cell(p, k)));
+      const grid = h('div', { class: 'pd-grid pd-scroll', tabindex: 0, role: 'region', 'aria-label': 'Pages', onclick: e => { if (e.target === grid) { this.picked.clear(); this.syncPicked(); } } }, d.pages.map((p, k) => this.cell(p, k)));
       this.stage.replaceChildren(grid); grid.scrollTop = top * grid.scrollHeight; return;
     }
     const strip = h('div', { class: 'pd-strip' }, d.pages.map((p, k) => { const [dw] = this.dsize(p); return h('a', { class: k === this.cur ? 'on' : '', data: { k }, onclick: () => this.goto(k) }, this.pageBox(p, 104 / dw, false), h('i', {}, k + 1)); }));
-    const scroll = h('div', { class: 'pd-scroll pd-read' });
+    const scroll = h('div', { class: 'pd-scroll pd-read', tabindex: 0, role: 'region', 'aria-label': 'Document' });
     this.stage.replaceChildren(strip, scroll);
     const z = this.zcur = this.z(); scroll.append(d.pages.map(p => this.pageBox(p, z, true)));
     scroll.scrollTop = top * scroll.scrollHeight;
