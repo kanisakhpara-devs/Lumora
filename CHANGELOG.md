@@ -3,6 +3,33 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Website redesign: the light table (cloud session, 2026-10-15)
+
+**Changed** `docs/index.html`, `docs/site.css` and `docs/site.js`, rewritten from scratch so the site no longer looks like a template. It is now laid out like a desk covered in your own work:
+- **Hero:** prints of the five workspaces, each with a white border, masking tape and a handwritten caption. They drop onto the desk when the page opens and drift a little as you scroll. Two workspace icons sit on the desk as stickers.
+- **Index strip** under the hero, linking to each workspace.
+- **One numbered spread per workspace** (01 Lens … 05 Folio): a big outlined number, the text, a taped print that settles into place, and a handwritten red note that writes itself in. The spreads alternate left and right.
+- **"Also in the box"**: a sheet of ruled paper where the boxes tick themselves.
+- **Private by design**: a round rubber stamp reading "KEPT ON THIS COMPUTER" that stamps down.
+- **What's new**: a yellow memo pinned to the desk. **FAQ** on ruled lines. **Download**: a ticket with an "ADMIT ONE" stub and the run-from-source box with its Copy button. The footer credits stay.
+- **Light is now the default**, with a dark "night desk" theme on the toggle. The EN/ES switch (English by default) and reduce-motion support are kept.
+
+**Added** `docs/assets/Caveat.ttf` (the handwriting typeface) and `docs/assets/Caveat-OFL.txt`. Caveat is under the SIL Open Font License and is served from the site itself, so the page still loads nothing from other websites.
+
+**Tested** (headless Chromium, served locally):
+- desktop 1440 × 900 at every section in light and dark
+- phone 390 × 844
+- Spanish
+- reduced motion (prints shown at once, no animation)
+- no script errors
+
+axe-core found **no accessibility violations** in light/English or in dark/Spanish. Fixed during testing:
+- The download ticket was 1300 px wide on phones, which made the page scroll sideways.
+- The tilted prints also pushed the page wider than the screen.
+- The handwritten notes were too small, and their last letters were clipped.
+
+**Not tested**: Safari or Firefox, or a real phone.
+
 ## Project website for GitHub Pages (cloud session, 2026-10-15)
 
 **Added** `docs/index.html`, `docs/site.css`, `docs/site.js`, `docs/assets/` (the five workspace icons, plus the Nunito font with its OFL licence) and `docs/.nojekyll`. It is a one-page site, built to your choices:
