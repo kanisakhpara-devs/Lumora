@@ -16,6 +16,7 @@
   <a href="#-groove"><b>Groove</b></a> ·
   <a href="#-folio"><b>Folio</b></a> ·
   <a href="#-get-started"><b>Get started</b></a> ·
+  <a href="https://kanisakhpara-devs.github.io/Opia/"><b>Website</b></a> ·
   <a href="CHANGELOG.md"><b>Changelog</b></a>
 </p>
 

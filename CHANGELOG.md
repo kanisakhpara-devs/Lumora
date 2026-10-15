@@ -3,6 +3,26 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Project website for GitHub Pages (cloud session, 2026-10-15)
+
+**Added** `docs/index.html`, `docs/site.css`, `docs/site.js`, `docs/assets/` (the five workspace icons, plus the Nunito font with its OFL licence) and `docs/.nojekyll`. It is a one-page site, built to your choices:
+- **Hero:** the Opia wordmark draws itself and the blue dot orbits, like the app's splash. The tagline and buttons rise in, and the Lens screenshot starts tilted back and lies flat as you scroll.
+- **Workspaces as a pinned scroll story:** an app window stays pinned while you read about Lens, Imagine, Motion, Groove and Folio. Its screenshot cross-fades, the small switch in its title bar moves along, and the page's glow and buttons take each workspace's colour. On phones it becomes a simple list with a screenshot under each workspace.
+- **Feature grid**, with cards that pop in one after another.
+- **Private by design**, with an animated graphic of the workspace icons flowing into a computer under a crossed-out cloud.
+- **What's new**, as a timeline.
+- **FAQ**, answered honestly, including no licence chosen yet, Windows-only parts and no Lightroom catalogs.
+- **Download:** a button to GitHub Releases, plus a run-from-source box with a Copy button.
+- **Footer** with credits and licences (FFmpeg GPL note, Fluid R3 CC BY, Nunito OFL).
+- **Dark by default with a light/dark toggle**, and an **EN/ES switch** (English by default). Both choices are remembered in the browser.
+- Animations stay smooth and tasteful. Visitors whose computer is set to reduce motion get a still page.
+
+The site reuses the screenshots in `docs/readme/`. It loads nothing from other websites.
+
+**Tested** (headless Chromium, served locally): desktop 1440 × 900 at every section, phone 390 × 844 (no sideways scrolling), light theme, Spanish, the FAQ opening, and the Copy button. axe-core found **no accessibility violations** in either dark/English or light/Spanish. During testing I fixed a script error (a name clash that stopped the scroll effects), low contrast on the not-yet-active workspace text, and white text on the light accent colours.
+
+**Needs you**: GitHub Pages has to be switched on once in the repository settings (see the reply). Until then the README's Website link shows a 404. The Download button goes to the Releases page, which is empty until you publish the exe there.
+
 ## Workspaces renamed: Lens, Imagine, Motion, Groove, Folio (cloud session, 2026-10-15)
 
 You picked new names: **Photos → Lens, Image → Imagine, Video → Motion, Music → Groove, PDF → Folio**.
