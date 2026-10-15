@@ -3,6 +3,20 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Icons for Image and Video (cloud session, 2026-10-15)
+
+Three icon options were drawn for each workspace in the style of the existing ones (dark tile, cream ring, one coloured accent). You picked **Image C (crop marks)** and **Video B (film strip)**.
+
+**Added**
+- `web/img/opia-image-icon.svg`: the Opia ring and dot inside four violet (#B57CFF) crop corners.
+- `web/img/opia-video-icon.svg`: the Opia ring with an amber (#FFB020) dot, between two rows of film sprocket holes.
+- Each icon is shown on its workspace's welcome screen, the way the PDF icon is.
+- The top-bar logo changes with the workspace: in Image, the crop corners appear around the ring and the dot turns violet. In Video, the sprocket holes appear and the dot turns amber. These are extra shapes in the `#brand` logo in `web/index.html`, shown by CSS.
+- Accent colours: violet for Image and amber for Video, replacing the default blue. Buttons, the workspace switch, selected items and section headings use them. The light themes (Porcelain, Lilac) use darker versions (#8A4FE0, #D98A00) so the colours keep their contrast.
+
+**Tested**: screenshots in headless Chromium of both welcome screens and the top bar in Opia Dark, and the top bar in Porcelain; no page errors.
+**Not tested**: the Midnight Teal and Lilac themes, and the packaged exe. No new packages; the icons ship inside `web/`, which the exe already includes.
+
 ## Video workspace (cloud session, 2026-10-15)
 
 A new **Video** workspace on the top-bar switch (Photos | Image | Video | Music | PDF): a timeline editor that exports MP4.
@@ -19,7 +33,7 @@ A new **Video** workspace on the top-bar switch (Photos | Image | Video | Music 
 - `server/app.py` / `server/core.py`: files can now be served with HTTP byte ranges (`FileRef`), which the browser needs to seek in audio and video, and streamed uploads (`/api/stream/...`) that write to disk as they arrive.
 - Help > About now also says which FFmpeg is in use. Tour says five workspaces. Spanish strings for the Video workspace's labels, buttons, dialogs and menus (hover help is English only).
 - README: Video section, the FFmpeg licence note, and the new `imageio-ffmpeg` requirement.
-- **No icon**: the Video welcome screen shows the normal Opia logo and the top-bar logo does not change; it uses the default gold accent. Supply an icon and colour if you want one like Music and PDF have.
+- Icon: added later the same day, see "Icons for Image and Video" above.
 
 **FFmpeg licence**: imageio-ffmpeg's Python code is BSD-2-Clause. The ffmpeg program inside it is not covered by that: on Linux it is a GPL v3 build (checked: `--enable-gpl --enable-version3`, includes x264). The Windows one is very likely the same kind of build; check with `ffmpeg -version`. Fine for personal use; if `Opia.exe` is ever given to other people with that ffmpeg inside, the GPL's terms apply to the ffmpeg part. The README says this too.
 
@@ -61,7 +75,7 @@ A new **Image** workspace on the top-bar switch (Photos | Image | Music | PDF): 
 - `server/imageedit.py` (new): `/img/imgfile` (a file on disk in a form the browser can draw), uploads `image_decode`, `image_export`, `image_project_save`, `image_project_upload`, and `image_project_open`. Registered in `server/app.py`.
 - Spanish strings for the Image workspace's labels, buttons, hints, dialogs and menus (hover-help cards are English only, as in the PDF workspace).
 - Tour: the workspace step now says four workspaces and describes Image. README: new Image section and honest limits.
-- Tool icons in the toolbox are plain line glyphs drawn in CSS (move arrows, brush, crop marks...). They are not brand artwork. **The Image workspace has no icon of its own**: its welcome screen shows the normal Opia logo and the top-bar logo does not change. Supply an icon (like the Music and PDF ones) if you want one, and an accent colour; it currently uses the default gold.
+- Tool icons in the toolbox are plain line glyphs drawn in CSS (move arrows, brush, crop marks...), not brand artwork. The workspace icon was added later the same day, see "Icons for Image and Video" above.
 
 **Tested** (headless Chromium (Playwright build 1194) on Linux against the real Python server, scripted with Playwright):
 - Opening a JPEG; brush stroke changes the right pixels; rectangle selection + Ctrl+J; moving a layer; Multiply blend; text layer typed and named after its first line; multi-line text; changing text size / bold from the options bar; shape layer; Free Transform rotate + scale on a shape layer (matrix checked); undo twice / redo twice restores layers and the transform.

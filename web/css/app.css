@@ -396,3 +396,10 @@ body.beginner .ie-toolbox { width: 104px; } body.beginner .ie-tool { font-size: 
 .vd-head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #ff4d4d; z-index: 4; pointer-events: none; } .vd-head::before { content: ""; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top: 8px solid #ff4d4d; }
 .vd-zoom { width: 110px; } .vd-snap { margin: 0 6px; } .vd-hint { margin-left: 10px; overflow: hidden; text-overflow: ellipsis; }
 body.beginner .vd-bin { width: 260px; } body.beginner .vd-insp { width: 300px; } body.beginner .vd-th { height: 60px; } body.beginner .vd-lane { height: 60px; }
+/* Opia Image and Opia Video: crop marks and film sprockets on the logo in the top bar, and their accent colours (violet, amber) */
+.lg-crop, .lg-film { display: none; } .lg-crop { fill: none; stroke: #b57cff; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; } .lg-film { fill: #ffb020; }
+body[data-module=image] #brand .lg-crop, body[data-module=video] #brand .lg-film { display: block; } body[data-module=image] #brand .lg-dot { fill: #b57cff; } body[data-module=video] #brand .lg-dot { fill: #ffb020; }
+body[data-module=image] { --gold: #b57cff; --gold2: #d2b0ff; --onacc: #1d0d33; --sel: #2a1c40; --cellsel: #2d1f45; --cellact: #3a2858; }
+body[data-module=video] { --gold: #ffb020; --gold2: #ffcd6b; --onacc: #2b1a00; --sel: #3a2a0c; --cellsel: #3d2c0e; --cellact: #4f3912; }
+[data-theme=porcelain] body[data-module=image], [data-theme=lilac] body[data-module=image] { --gold: #8a4fe0; --gold2: #6c34c4; --onacc: #ffffff; --sel: #ece0fd; --cellsel: #ece0fd; --cellact: #dcc7fb; }
+[data-theme=porcelain] body[data-module=video], [data-theme=lilac] body[data-module=video] { --gold: #d98a00; --gold2: #b06f00; --onacc: #ffffff; --sel: #fdefd2; --cellsel: #fdefd2; --cellact: #fbe0aa; }

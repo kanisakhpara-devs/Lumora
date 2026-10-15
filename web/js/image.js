@@ -849,7 +849,7 @@ const ImgEd = {
   drawWelcome() {
     $$('.ie-welcome', this.port).forEach(x => x.remove()); this.g.setTransform(1, 0, 0, 1, 0, 0); this.g.clearRect(0, 0, this.cv.width, this.cv.height); this.og.setTransform(1, 0, 0, 1, 0, 0); this.og.clearRect(0, 0, this.ov.width, this.ov.height);
     const recent = App.conf('img_recent', []);
-    this.port.append(h('div', { class: 'pd-welcome ie-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-icon.svg', alt: '' }), h('h2', {}, 'Image'), h('p', { class: 'dim' }, 'Paint, cut out, combine pictures in layers, add text and shapes, and fix colours. Open a picture, start a blank one, or bring in a photo from Photos.'),
+    this.port.append(h('div', { class: 'pd-welcome ie-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-image-icon.svg', alt: '' }), h('h2', {}, 'Image'), h('p', { class: 'dim' }, 'Paint, cut out, combine pictures in layers, add text and shapes, and fix colours. Open a picture, start a blank one, or bring in a photo from Photos.'),
       h('div', { class: 'pd-big' }, this.btn('Open a Picture…', () => this.open(), null, 'primary big'), this.btn('New Blank Picture…', () => this.newDoc(), null, 'big'), this.btn('Edit the Selected Photo', () => this.fromPhoto(App.cur()), 'Open the photo that is selected in Photos, with its Develop edits.', 'big')),
       h('p', { class: 'dim' }, 'Or drop a picture here, or paste one with Ctrl+V.'),
       recent.length ? h('div', { class: 'pd-recent' }, h('div', { class: 'fsec' }, 'Opened recently'), recent.map(p => h('a', { title: p, data: { notr: 1 }, onclick: () => this.openPath(p).catch(UI.error) }, p.split(/[\\/]/).pop()))) : null));

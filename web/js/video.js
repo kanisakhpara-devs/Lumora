@@ -301,7 +301,7 @@ const Vid = {
   btn(label, run, tip, cls) { const b = h('button', { class: 'btn ' + (cls || ''), onclick: () => { try { const r = run(); if (r && r.catch) r.catch(UI.error); } catch (e) { UI.error(e); } } }, label); if (tip) { b.dataset.tip = tip; b.dataset.tipName = label.replace(/…$/, ''); } return b; },
   async drawWelcome() {
     const list = await api('video_list').catch(() => []);
-    this.welcomeEl.replaceChildren(h('div', { class: 'pd-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-icon.svg', alt: '' }), h('h2', {}, 'Video'), h('p', { class: 'dim' }, 'Put clips, pictures, titles and music on a timeline, trim and split them, fade between them, and export an MP4.'),
+    this.welcomeEl.replaceChildren(h('div', { class: 'pd-welcome' }, h('img', { class: 'pd-logo', src: 'img/opia-video-icon.svg', alt: '' }), h('h2', {}, 'Video'), h('p', { class: 'dim' }, 'Put clips, pictures, titles and music on a timeline, trim and split them, fade between them, and export an MP4.'),
       h('div', { class: 'pd-big' }, this.btn('New Video…', () => this.create(), null, 'primary big'), this.btn('Make a Slideshow from Selected Photos', () => this.addPhotos(), 'Start a project from the photos selected in Photos, four seconds each with crossfades.', 'big')),
       list.length ? h('div', { class: 'pd-recent' }, h('div', { class: 'fsec' }, 'Your projects'), list.slice(0, 10).map(pr => h('a', { data: { notr: 1 }, onclick: () => this.load(pr.name).catch(UI.error) }, pr.name))) : null));
   },
