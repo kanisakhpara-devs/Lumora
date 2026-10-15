@@ -1,68 +1,154 @@
-# Opia
+<p align="center">
+  <img src="docs/readme/banner.png" alt="Opia: photos, pictures, video, music and PDFs in one app, all on your computer" width="100%">
+</p>
 
-A local photo organizer and editor: Library, Develop, Map, Book, Slideshow, Print and Web modules.
-A Python engine handles the disk, catalogs, colour management and export; the interface renders every edit on the GPU (WebGL 2).
+<p align="center">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0E0E10?style=for-the-badge&logo=windows&logoColor=F4F1EA">
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3D5AFE?style=for-the-badge&logo=python&logoColor=white">
+  <img alt="Runs offline" src="https://img.shields.io/badge/Runs-offline-1a9c4b?style=for-the-badge">
+  <img alt="Five workspaces" src="https://img.shields.io/badge/Workspaces-5-B57CFF?style=for-the-badge">
+</p>
 
-## Five workspaces
+<p align="center">
+  <a href="#-photos"><b>Photos</b></a> ·
+  <a href="#-image"><b>Image</b></a> ·
+  <a href="#-video"><b>Video</b></a> ·
+  <a href="#-music"><b>Music</b></a> ·
+  <a href="#-pdf"><b>PDF</b></a> ·
+  <a href="#-get-started"><b>Get started</b></a> ·
+  <a href="CHANGELOG.md"><b>Changelog</b></a>
+</p>
 
-**Photos** is the organizer and editor described below. **Image**, **Video**, **Music** and **PDF** sit beside it on the switch next to the logo.
+---
 
-**Image** is a layered picture editor, in the spirit of Photoshop:
+**Opia** is a desktop app for the things you make: a photo organiser and raw-style editor, a layered picture editor, a video editor, a music studio and a PDF editor. You switch between them with one click. Everything runs on your own computer: no account, no uploads, no subscription. A Python engine handles the files, catalogs, colour management and exports. The interface draws every photo edit on the graphics card (WebGL 2).
 
-- Layers: add, duplicate, delete, reorder by dragging, hide, opacity, 16 blend modes, merge down, merge visible, flatten.
-- Tools: move, rectangle / oval / lasso selections and a magic wand (Shift adds, Alt takes away), brush and eraser (size, hardness, opacity, pen pressure), fill bucket, gradient, eyedropper, text, shapes (rectangle, rounded rectangle, oval, line, arrow), crop, hand.
-- Selections: fill, delete, copy, cut, paste, copy merged, layer via copy / cut, invert, feather, crop to selection.
-- Free Transform (Ctrl+T): resize, turn and move a layer with handles. Text and shape layers stay editable after transforming.
-- Image: image size, canvas size, rotate, flip, trim empty edges.
-- Adjustments with a live preview, inside the selection if there is one: brightness / contrast, levels, curves, hue / saturation (with colorize), colour balance, auto tone, black & white, invert, posterize, threshold. Filters: blur, sharpen, add noise, pixelate.
-- Opens PNG, JPEG, WebP, GIF, BMP, TIFF, HEIC and RAW files, and pictures pasted from the clipboard. Exports PNG, JPEG, WebP or TIFF, optionally straight into the Photos catalog. Projects (`.opiaimg`, a zip with one PNG per layer and a JSON description) keep the layers and editable text.
-- In Photos, *Photo > Edit in Image Editor* opens the selected photo with its Develop edits applied.
+Every workspace has a **Beginner** mode that shows the essentials in bigger controls, and an **Advanced** mode with every panel and tool. Opia also comes in four themes, in English and Spanish, and has trackpad-friendly controls.
 
-Editing is 8 bits per channel in sRGB, in the browser engine, so very large pictures (well over 100 megapixels) are slow. There are no layer masks, adjustment layers, layer styles, smart objects, healing or clone brushes, or PSD support; adjustments and filters change the layer's pixels (undo takes them back).
+<br>
 
-**Video** is a timeline editor:
+## <img src="web/img/opia-icon.svg" width="34" align="top"> Photos
 
-- Projects with any number of video and audio tracks (upper video tracks draw over lower ones). Import video, sound and pictures (drop them on the media list or the timeline), or add photos from Photos with their Develop edits.
-- Move clips between tracks and along the timeline with snapping, trim either end, split at the playhead, duplicate, delete, delete and close the gap, detach a video clip's sound onto an audio track.
-- Fades in and out (picture and sound), crossfades between neighbouring clips, titles (text, typeface, size, colour, position, optional box), volume per clip and per track, mute and hide, fit or fill, and (Advanced) size, position and opacity for picture-in-picture.
-- Live preview in the window, and export to MP4 (H.264 video, AAC sound) at the project size or smaller, in three qualities. Save a frame as a picture, or send it to the Image workspace.
-- Files the window cannot play itself (AVI, WMV, MKV with other codecs, HEVC, 10-bit video...) get a 720p preview copy made in the background; the export always uses the original. Projects are kept in `Pictures\Opia\Video\<project>`; media stays where it is (files dropped without a known location are copied into the project's `Media` folder).
+<img src="docs/readme/photos.png" alt="The Photos library: a grid of landscape photos with ratings, flags and colour labels, the catalog and folders on the left and keywording on the right">
 
-FFmpeg does the work behind Video. It comes from the **imageio-ffmpeg** Python package: its Python code is BSD-2-Clause, but the `ffmpeg` program that ships inside it is a separate program under its own licence, and its builds are usually GPL builds (they include x264; the Linux one checked while writing this says `--enable-gpl`; run `ffmpeg -version` on the Windows one to see). That is fine for using Opia yourself; if you ever distribute `Opia.exe` with that ffmpeg inside, the GPL applies to that ffmpeg binary (offer its source, keep its licence notice). To use a different ffmpeg, put its full path in `config.json` as `"ffmpeg": "C:\\path\\to\\ffmpeg.exe"`. Help > About shows which one is in use.
+Import, sort and find your photos, then edit them without ever changing the original files.
 
-Limits: no speed changes, keyframed motion, colour correction or effects on video clips, no text animation, and only MP4 output. The preview drops frames on slow machines or with many tracks at once; the export is always frame-accurate. Clips that overlap on the same track (other than a crossfade) both show, the later one on top.
+| | |
+| --- | --- |
+| **Library** | Grid, Loupe, Compare and Survey views. Star ratings, pick / reject flags and colour labels. Collections, smart collections, keywords, metadata presets and a filter bar. Stacks, virtual copies, a duplicate finder and "pick the sharpest". **People**: on-device face detection and grouping. |
+| **Develop** | White balance, tone, presence, tone curve, HSL, detail, lens corrections, transform / Upright, effects and calibration. Presets, snapshots, before / after, soft proofing. Crop, healing, red eye and masks (brush, linear, radial). Panorama, HDR and focus-stack merges. |
+| **Map · Book · Slideshow · Print · Web** | Place photos on a map, lay out a photo book (export to PDF), run a slideshow, print contact sheets and packages, and build a web gallery. |
+| **Export** | JPEG, PNG, TIFF, WebP and AVIF with resizing, sharpening, watermarks, ICC profiles and naming templates. Export to a folder, an FTP server or a CD/DVD. XMP sidecars, tethered capture and plug-ins. |
 
-**Music** is a small studio:
+<p align="center"><img src="docs/readme/develop.png" alt="Develop: a sunset photo with exposure, contrast, highlights, shadows, clarity and vibrance adjusted" width="88%"></p>
 
-- *Beginner* is a jam board. Riff cards for drums, bass, chords and melody loop together; "Start me off" drafts a song in a style, and "New idea" rewrites one part to fit the rest. Notes are limited to the song's scale.
-- *Advanced* puts the same song on a timeline with a mixer, and gives audio tracks range editing (split, cut, copy, paste, trim), effects (fades, amplify, normalize, compressor, filters, echo, reverb, reverse, pitch, tempo, speed, noise reduction), a spectrogram view, and silence/tone/noise generators.
-- Import audio or MIDI, record from the microphone, use your own samples for any drum or as an instrument, and export WAV, MP3, FLAC, OGG, per-track stems or MIDI.
+Your photos are never modified. Edits live in the catalog, and optionally in `.xmp` sidecars.
 
-Ten instruments are recordings of real ones (piano, electric piano, two guitars, bass, strings, violin, cello, flute, trumpet), taken from the Fluid R3 GM SoundFont under CC BY 3.0; see `web/samples/CREDITS.md`. The other instruments and all drum kits are synthesised in the app. Songs are kept in `Pictures\Opia\Music\<song>`.
+<br>
 
-**PDF** is for reading and changing PDFs:
+## <img src="web/img/opia-image-icon.svg" width="34" align="top"> Image
 
-- *Edit* view: type text anywhere, highlight, draw, drop in ticks and crosses, place a signature you draw once, cover things up, add boxes, ovals, lines, arrows and pictures, and fill in real form fields. Find text across the document.
-- *Pages* view: drag pages into a new order, rotate, duplicate, delete, insert blank pages, extract pages, and add more PDFs or pictures to combine everything into one file.
-- More: page numbers, a watermark, a password, a smaller file size on Save As, splitting into several files, saving pages as PNG or JPEG, and saving all the text.
+<img src="docs/readme/image.png" alt="The Image editor: a photo with a caption box shape layer and two editable text layers, tools on the left and the layers panel on the right">
 
-The files you open are never changed; saving builds a new PDF. What you add is drawn into the page, so it looks the same in every viewer, and it cannot be edited again after the saved file is reopened. Existing text in a PDF cannot be rewritten, scanned pages are not read (no OCR), and Cover Up hides what is under it without removing it from the file.
+A layered picture editor in the spirit of Photoshop.
 
-## Run it
+- **Layers:** opacity, 16 blend modes, drag to reorder, merge, flatten. **Text and shape layers stay editable**, even after transforming them.
+- **Selections:** rectangle, oval, lasso and magic wand (Shift adds, Alt takes away). Feather, invert, fill, copy / cut / paste, layer via copy.
+- **Tools:** brush and eraser (with pen pressure), fill bucket, gradient, eyedropper, text, shapes, crop and **Free Transform** (Ctrl+T).
+- **Adjustments with a live preview:** levels, curves, hue / saturation, brightness / contrast, colour balance, auto tone, black & white, posterize and threshold. **Filters:** blur, sharpen, noise and pixelate.
+- Opens PNG, JPEG, WebP, GIF, BMP, TIFF, HEIC and RAW. Exports PNG, JPEG, WebP or TIFF, straight into your Photos catalog if you like. Projects (`.opiaimg`) keep every layer.
+- In Photos, *Photo › Edit in Image Editor* opens a photo with its Develop edits applied.
 
-Double-click `Opia.bat`, or:
+<br>
+
+## <img src="web/img/opia-video-icon.svg" width="34" align="top"> Video
+
+<img src="docs/readme/video.png" alt="The Video editor: a title over a sunset photo in the preview, and a timeline with a title track, eight photo clips with crossfades and a music track">
+
+A timeline editor that exports MP4.
+
+- **Any number of video and audio tracks.** Drag clips along and between tracks with snapping, trim either end, split at the playhead (S), and delete with or without closing the gap.
+- **Fades, crossfades and titles**, with volume per clip and per track, picture-in-picture (size, position, opacity), and fit or fill.
+- **Live preview**, then **export to MP4** (H.264 + AAC) at the project size, 1080p, 720p or 480p.
+- **Make a video from selected photos** in one click: 4 seconds each, with crossfades.
+- Files the window can't play itself (AVI, WMV, HEVC, 10-bit…) get a preview copy in the background. The export always uses your originals.
+
+<br>
+
+## <img src="web/img/opia-music-icon.svg" width="34" align="top"> Music
+
+<img src="docs/readme/music.png" alt="The Music studio in Advanced mode: drums, bass, chords and melody riffs over ten bars, an ambient audio track, and the melody's note grid below">
+
+A small studio for people who don't read music, which still has the tools for those who do.
+
+- **Beginner** is a jam board: riff cards for drums, bass, chords and melody that loop together. *Start me off* drafts a song in a style, and *New idea* rewrites one part to fit the rest. Notes stay in the song's scale, so nothing sounds wrong.
+- **Advanced** puts the song on a timeline with a mixer. **Drag sound files onto the timeline** exactly where you want them, move clips between tracks, and trim them by their ends. Range editing, a spectrogram, and effects: fades, compressor, filters, echo, reverb, pitch, tempo, speed and noise reduction.
+- Record from the microphone, import audio or MIDI, use your own samples, and export WAV, MP3, FLAC, OGG, stems or MIDI.
+- Ten instruments are real recordings (from the Fluid R3 GM SoundFont, CC BY 3.0); the rest are synthesised.
+
+<br>
+
+## <img src="web/img/opia-pdf-icon.svg" width="34" align="top"> PDF
+
+<img src="docs/readme/pdf.png" alt="The PDF editor: an itinerary with highlighted text, ticks and a red note with an arrow, page thumbnails on the left">
+
+Read, fill in, sign and rearrange PDFs.
+
+- **Edit:** type anywhere, highlight, draw, tick and cross, **sign** (draw your signature once), cover things up, add shapes, arrows and pictures, and fill in real form fields. Find text across the document.
+- **Pages:** drag pages into order, rotate, duplicate, delete, insert blanks, extract, and **combine several PDFs and pictures into one**.
+- Page numbers, watermarks, passwords, smaller files, split into several files, save pages as pictures, and save all the text.
+- The files you open are never changed: saving makes a new PDF.
+
+<br>
+
+## 🚀 Get started
+
+**On Windows:** double-click `Opia.bat`, or run
 
 ```bash
 python run.py
 ```
 
-The app opens in its own window (Edge or Chrome in app mode). Closing the window stops the engine and, if one is due, backs up the catalog.
+Opia opens in its own window. Closing the window stops it and, if one is due, backs up your catalog.
 
-Options: `--port N`, `--no-window` (open the printed URL yourself), `--catalog path\to\file.opiacat`, `--home folder`.
+<details>
+<summary><b>Requirements and options</b></summary>
 
-Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview pillow-heif pypdf pypdfium2 cryptography imageio-ffmpeg` (`imageio-ffmpeg` is new for the Video workspace: `pip install imageio-ffmpeg`).
+<br>
 
-## Where things live
+Python 3.10 or newer, with:
+
+```bash
+pip install Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview pillow-heif pypdf pypdfium2 cryptography imageio-ffmpeg
+```
+
+`run.py` options: `--port N`, `--no-window` (open the printed address yourself), `--catalog path\to\file.opiacat`, `--home folder`.
+
+The packaged single-file app (`dist\Opia.exe`) is built with PyInstaller; the exact command is in [CHANGELOG.md](CHANGELOG.md).
+
+</details>
+
+<details>
+<summary><b>A few keyboard shortcuts</b></summary>
+
+<br>
+
+| Where | Keys |
+| --- | --- |
+| Everywhere | **F10** menus · **Ctrl+Z / Ctrl+Y** undo / redo · **Ctrl+/** all shortcuts · **F11** full screen |
+| Photos | **1–5** rating · **P / X / U** pick, reject, unflag · **G / E** grid / loupe · **D** Develop |
+| Image | **V M L W B E G T U C** tools · **[ ]** brush size · **Ctrl+T** transform · **Ctrl+J** layer via copy |
+| Video | **Space** play · **S** split · **T** title · **Alt+← →** nudge a clip · **Ctrl+Shift+E** export |
+| PDF | **Ctrl+F** find · **Ctrl+S** save · **Delete** remove the selected item or page |
+
+Help › Customize Shortcuts lets you change them.
+
+</details>
+
+<details>
+<summary><b>Where things are kept</b></summary>
+
+<br>
 
 | What | Where |
 | --- | --- |
@@ -70,14 +156,18 @@ Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soun
 | Previews / Smart Previews | `<Name> Previews.opiadata`, `<Name> Smart Previews.opiadata` beside the catalog |
 | Backups | `Backups\<date>\<Name>.opiacat.zip` beside the catalog (or the folder set in Catalog Settings) |
 | Presets, preferences, recent catalogs | `Pictures\Opia\config.json` |
+| Songs | `Pictures\Opia\Music\<song>` |
 | Video projects, preview copies, thumbnails | `Pictures\Opia\Video\<project>`, `Pictures\Opia\Video\.cache` |
 | Image projects | wherever you save them (`.opiaimg`) |
 | Extra ICC profiles | `Pictures\Opia\Profiles` |
 | Plug-ins | `plugins\` here, plus any folders added in the Plug-in Manager |
 
-Your photos are never modified. Edits are stored in the catalog (and optionally in `.xmp` sidecars).
+</details>
 
-## Writing a plug-in
+<details>
+<summary><b>Writing a plug-in</b></summary>
+
+<br>
 
 A folder with `plugin.json` and a Python file:
 
@@ -100,7 +190,22 @@ def on_import(photos, ctx):                    # after every import
 `ctx` offers `photos`, `catalog`, `home`, `image(photo_id, size)` (RGB array), `import_files(paths)`, `open(path)`, `reveal(path)`, `log(text)`.
 See `plugins\contact_sheet` and `plugins\export_manifest`.
 
-## Honest limits
+</details>
+
+<br>
+
+## ♿ Accessibility
+
+Everything you can click can also be reached with **Tab** and pressed with **Enter** or **Space**, and a visible ring shows where the keyboard is. **F10** opens the menus, which you can move through with the arrow keys. Dialogs keep the keyboard inside them until they close. Every control has a name for screen readers, and text meets the WCAG 4.5:1 contrast ratio in all four themes. Painting, drawing and dragging on a canvas still need a mouse, pen or touch. More detail is in the [changelog](CHANGELOG.md).
+
+<br>
+
+## 🧭 Honest limits
+
+<details>
+<summary><b>Photos</b></summary>
+
+<br>
 
 - **`.opiacat` catalogs** are Opia's own SQLite schema and cannot be opened by other photo applications. Catalogs saved under the earlier `.lrcat` extension (with `.lrdata` previews) are renamed automatically the first time they are opened.
 - **Editing is 8-bit sRGB.** RAW files are decoded through LibRaw to 8-bit before editing, so there is less highlight/shadow latitude than a true raw pipeline.
@@ -115,3 +220,44 @@ See `plugins\contact_sheet` and `plugins\export_manifest`.
 - **DNG conversion** calls Adobe's free DNG Converter, which must be installed separately.
 - **Map** tiles come from OpenStreetMap and need an internet connection (a coordinate grid is shown offline). This is the only network access the app makes, apart from FTP uploads you start.
 - **Slideshow video** is recorded in real time and has no soundtrack.
+
+</details>
+
+<details>
+<summary><b>Image</b></summary>
+
+<br>
+
+Editing is 8 bits per channel in sRGB, in the browser engine, so very large pictures (well over 100 megapixels) are slow. There are no layer masks, adjustment layers, layer styles, smart objects, healing or clone brushes, or PSD support. Adjustments and filters change the layer's pixels (undo takes them back).
+
+</details>
+
+<details>
+<summary><b>Video</b></summary>
+
+<br>
+
+No speed changes, keyframed motion, colour correction or effects on video clips, no text animation, and only MP4 output. The preview drops frames on slow machines or with many tracks at once; the export is always frame-accurate. Clips that overlap on the same track (other than a crossfade) both show, the later one on top.
+
+</details>
+
+<details>
+<summary><b>PDF</b></summary>
+
+<br>
+
+What you add is drawn into the page, so it looks the same in every viewer, and it cannot be edited again after the saved file is reopened. Existing text in a PDF cannot be rewritten, scanned pages are not read (no OCR), and Cover Up hides what is under it without removing it from the file.
+
+</details>
+
+<br>
+
+## 📜 Credits and licences
+
+- **FFmpeg** (video) comes from the [imageio-ffmpeg](https://github.com/imageio/imageio-ffmpeg) package. Its Python code is BSD-2-Clause, but the `ffmpeg` program inside it is a separate program under its own licence. Its builds are usually GPL builds (they include x264; run `ffmpeg -version` to check). That is fine for using Opia yourself. If you distribute `Opia.exe` with that ffmpeg inside, the GPL applies to the ffmpeg part. To use a different ffmpeg, put its full path in `config.json` as `"ffmpeg": "C:\\path\\to\\ffmpeg.exe"`; Help › About shows which one is in use.
+- **Instrument samples:** Fluid R3 GM SoundFont, CC BY 3.0. See [`web/samples/CREDITS.md`](web/samples/CREDITS.md).
+- **Font:** Nunito, SIL Open Font License. See [`web/fonts/OFL.txt`](web/fonts/OFL.txt).
+- **PDF:** pypdf (BSD) and pypdfium2 (Apache-2.0 / BSD), chosen over AGPL alternatives.
+- The pictures in these screenshots were generated for this page; they are not real photos.
+
+Opia's own code has no licence file yet, so by default all rights are reserved.

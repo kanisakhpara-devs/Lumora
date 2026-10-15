@@ -3,6 +3,24 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## A nicer GitHub front page (cloud session, 2026-10-15)
+
+**Changed**: `README.md` is rewritten as a product page:
+- a banner with the Opia wordmark, a tagline and the five workspace icons
+- badges and quick links
+- a short introduction
+- one section per workspace, each with its icon, a real screenshot and its main features (Photos also has a Develop screenshot)
+- Get started, keyboard shortcuts, where files are kept and writing a plug-in, each folded into a click-to-open section
+- an Accessibility section
+- the honest limits per workspace, also folded
+- credits and licences, including the FFmpeg GPL note
+
+None of the facts were removed, only reorganised. I checked the feature claims against the code (for example the export formats and the Develop panels).
+
+**Added**: `docs/readme/` holds `banner.png` and the screenshots `photos.png`, `develop.png`, `image.png`, `video.png`, `music.png` and `pdf.png`, about 4.5 MB together. They are screenshots of the real app (headless Chromium, 1600 × 960). The landscape "photos", the itinerary PDF and the music in them were generated for the screenshots; the README says so. They are not used by the app.
+
+**Not done**: the repository's About box (description, website, topics) is set on GitHub itself and cannot be changed from here.
+
 ## Music: drag and drop audio like a video editor (cloud session, 2026-10-15)
 
 You asked for Filmora / Canva-style dragging of audio in the Music workspace's Advanced timeline.
