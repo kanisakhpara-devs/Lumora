@@ -3,9 +3,9 @@
 A local photo organizer and editor: Library, Develop, Map, Book, Slideshow, Print and Web modules.
 A Python engine handles the disk, catalogs, colour management and export; the interface renders every edit on the GPU (WebGL 2).
 
-## Four workspaces
+## Five workspaces
 
-**Photos** is the organizer and editor described below. **Image**, **Music** and **PDF** sit beside it on the switch next to the logo.
+**Photos** is the organizer and editor described below. **Image**, **Video**, **Music** and **PDF** sit beside it on the switch next to the logo.
 
 **Image** is a layered picture editor, in the spirit of Photoshop:
 
@@ -19,6 +19,18 @@ A Python engine handles the disk, catalogs, colour management and export; the in
 - In Photos, *Photo > Edit in Image Editor* opens the selected photo with its Develop edits applied.
 
 Editing is 8 bits per channel in sRGB, in the browser engine, so very large pictures (well over 100 megapixels) are slow. There are no layer masks, adjustment layers, layer styles, smart objects, healing or clone brushes, or PSD support; adjustments and filters change the layer's pixels (undo takes them back).
+
+**Video** is a timeline editor:
+
+- Projects with any number of video and audio tracks (upper video tracks draw over lower ones). Import video, sound and pictures (drop them on the media list or the timeline), or add photos from Photos with their Develop edits.
+- Move clips between tracks and along the timeline with snapping, trim either end, split at the playhead, duplicate, delete, delete and close the gap, detach a video clip's sound onto an audio track.
+- Fades in and out (picture and sound), crossfades between neighbouring clips, titles (text, typeface, size, colour, position, optional box), volume per clip and per track, mute and hide, fit or fill, and (Advanced) size, position and opacity for picture-in-picture.
+- Live preview in the window, and export to MP4 (H.264 video, AAC sound) at the project size or smaller, in three qualities. Save a frame as a picture, or send it to the Image workspace.
+- Files the window cannot play itself (AVI, WMV, MKV with other codecs, HEVC, 10-bit video...) get a 720p preview copy made in the background; the export always uses the original. Projects are kept in `Pictures\Opia\Video\<project>`; media stays where it is (files dropped without a known location are copied into the project's `Media` folder).
+
+FFmpeg does the work behind Video. It comes from the **imageio-ffmpeg** Python package: its Python code is BSD-2-Clause, but the `ffmpeg` program that ships inside it is a separate program under its own licence, and its builds are usually GPL builds (they include x264; the Linux one checked while writing this says `--enable-gpl`; run `ffmpeg -version` on the Windows one to see). That is fine for using Opia yourself; if you ever distribute `Opia.exe` with that ffmpeg inside, the GPL applies to that ffmpeg binary (offer its source, keep its licence notice). To use a different ffmpeg, put its full path in `config.json` as `"ffmpeg": "C:\\path\\to\\ffmpeg.exe"`. Help > About shows which one is in use.
+
+Limits: no speed changes, keyframed motion, colour correction or effects on video clips, no text animation, and only MP4 output. The preview drops frames on slow machines or with many tracks at once; the export is always frame-accurate. Clips that overlap on the same track (other than a crossfade) both show, the later one on top.
 
 **Music** is a small studio:
 
@@ -48,7 +60,7 @@ The app opens in its own window (Edge or Chrome in app mode). Closing the window
 
 Options: `--port N`, `--no-window` (open the printed URL yourself), `--catalog path\to\file.opiacat`, `--home folder`.
 
-Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview pillow-heif pypdf pypdfium2 cryptography` (already installed on this machine).
+Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview pillow-heif pypdf pypdfium2 cryptography imageio-ffmpeg` (`imageio-ffmpeg` is new for the Video workspace: `pip install imageio-ffmpeg`).
 
 ## Where things live
 
@@ -58,6 +70,8 @@ Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soun
 | Previews / Smart Previews | `<Name> Previews.opiadata`, `<Name> Smart Previews.opiadata` beside the catalog |
 | Backups | `Backups\<date>\<Name>.opiacat.zip` beside the catalog (or the folder set in Catalog Settings) |
 | Presets, preferences, recent catalogs | `Pictures\Opia\config.json` |
+| Video projects, preview copies, thumbnails | `Pictures\Opia\Video\<project>`, `Pictures\Opia\Video\.cache` |
+| Image projects | wherever you save them (`.opiaimg`) |
 | Extra ICC profiles | `Pictures\Opia\Profiles` |
 | Plug-ins | `plugins\` here, plus any folders added in the Plug-in Manager |
 

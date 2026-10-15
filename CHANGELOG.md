@@ -3,6 +3,44 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Video workspace (cloud session, 2026-10-15)
+
+A new **Video** workspace on the top-bar switch (Photos | Image | Video | Music | PDF): a timeline editor that exports MP4.
+
+**Added**
+- `web/js/video.js` (new): projects (new, open, rename, delete; saved automatically a moment after each change), a media list, a preview with transport (play / pause, start, previous / next edit, time), a details panel, and the timeline.
+- Timeline: video and audio tracks (add, rename, delete, hide, mute, track volume), clips that move along and between tracks with snapping (Alt places freely), trimming from either end (limited to the length of the file), split at the playhead (S), delete, delete and close the gap, duplicate, select all, crossfade with the clip before, detach a video clip's sound onto an audio track. Ruler scrubbing, zoom (Ctrl+wheel, slider, Show All), resizable timeline height, thumbnail strips on video clips and waveforms on sound.
+- Clip settings: start, length, in point, fade in / out (picture and sound), crossfade, volume (0-200%), mute, fit or fill, and in Advanced size, position and opacity (picture-in-picture). Titles: text, typeface, size, colour, bold, position (top, centre, bottom, lower third), dark box.
+- Project settings: size presets (1080p, 720p, 4K, square, vertical, 4:5) or custom, frame rate, background colour. The first video put on an empty timeline sets the project's size and frame rate.
+- Import: file picker or drag and drop (files without a known location are copied into the project's `Media` folder as they arrive, without loading them into memory), Import from Disk (Advanced), and Add Selected Photos / Photos > *Make a Video from Selected Photos* (4 s each with 0.5 s crossfades, rendered with their Develop edits).
+- Export: MP4, H.264 + AAC, project size or 1080p / 720p / 480p, three qualities, with progress and cancel in the activity area. Save Frame as Picture, Edit Frame in Image Editor.
+- Preview copies: files the window cannot decode (AVI, WMV, HEVC, 10-bit or 4:2:2 H.264, larger than 4096 px, unknown audio codecs...) get a 720p H.264 copy in `Pictures\Opia\Video\.cache`. If a file that should play fails anyway, the copy is made then. Export always reads the original.
+- `server/video.py` (new): finding ffmpeg (config.json `"ffmpeg"`, then imageio-ffmpeg, then the PATH), reading what a file holds, preview copies, thumbnail strips (one ffmpeg run per strip), waveforms (cached), projects, the export filter graph, and `video_ffmpeg` for the About box. On Windows ffmpeg runs without a console window.
+- `server/app.py` / `server/core.py`: files can now be served with HTTP byte ranges (`FileRef`), which the browser needs to seek in audio and video, and streamed uploads (`/api/stream/...`) that write to disk as they arrive.
+- Help > About now also says which FFmpeg is in use. Tour says five workspaces. Spanish strings for the Video workspace's labels, buttons, dialogs and menus (hover help is English only).
+- README: Video section, the FFmpeg licence note, and the new `imageio-ffmpeg` requirement.
+- **No icon**: the Video welcome screen shows the normal Opia logo and the top-bar logo does not change; it uses the default gold accent. Supply an icon and colour if you want one like Music and PDF have.
+
+**FFmpeg licence**: imageio-ffmpeg's Python code is BSD-2-Clause. The ffmpeg program inside it is not covered by that: on Linux it is a GPL v3 build (checked: `--enable-gpl --enable-version3`, includes x264). The Windows one is very likely the same kind of build; check with `ffmpeg -version`. Fine for personal use; if `Opia.exe` is ever given to other people with that ffmpeg inside, the GPL's terms apply to the ffmpeg part. The README says this too.
+
+**Tested** (headless Chromium on Linux, real server, Playwright; and the export graph run directly):
+- Reading files: H.264 MP4 with AAC, MPEG-4 AVI (flagged for a preview copy, copy made), MP3, JPEG; VP9/Opus WebM.
+- Putting clips on tracks, the project taking the first video's size and frame rate, crossfade (clip moved back 1 s, marked), title added and its text typed, split at 2 s (in points correct), trimming the end of a sound clip and moving a picture with the mouse, snapping, undo.
+- Playback with a WebM clip: at 2.2 s on the timeline the right clip was playing at 2.20 s in its file, the picture was drawn, the sound clip was playing.
+- Export from the UI to 640 × 360 (13 s) and, separately, a 1280 × 720 export whose frames were checked by eye: fade in from black, title over video, crossfade between two clips, fill vs fit, picture with fade out, and rising sound level during a fade in.
+- Byte-range requests (206 with the right Content-Range), streamed import through the file picker, the photo slideshow from the catalog, reloading a saved project, Beginner / Advanced, Spanish, every menu; no page or console errors.
+
+**Not tested**
+- Anything inside the packaged `Opia.exe` / WebView2 window on Windows, including Windows paths. **H.264 playback in the preview could not be tested here**: the Chromium used for testing has no H.264 decoder (WebView2 / Edge does), so H.264 clips (and the H.264 preview copies) only showed as "cannot be shown in the preview" in testing. Export of H.264 sources was tested and works.
+- Long or large files (hours, 4K), many tracks at once (preview smoothness), phone videos with rotation metadata, variable frame rate footage, files with several audio streams, and the speed of thumbnail strips on big files.
+
+**Packaging (needs doing on the PC)**:
+1. `pip install imageio-ffmpeg` on the PC.
+2. Rebuild with one more flag so the bundled ffmpeg goes into the exe: `--collect-all imageio_ffmpeg`. The full command becomes:
+   `python -m PyInstaller --noconfirm --onefile --windowed --name Opia --icon web/img/opia.ico --splash web/img/opia.png --add-data "web;web" --add-data "models;models" --add-data "plugins;plugins" --collect-submodules PIL --collect-all webview --collect-all soundfile --collect-all _soundfile_data --collect-all pillow_heif --collect-all pypdfium2 --collect-all pypdfium2_raw --collect-submodules pypdf --collect-submodules cryptography --collect-all imageio_ffmpeg`
+   (that is the base command from the notes plus the last flag; if the PC's saved command has other flags, keep them and add this one).
+3. Expect the exe to grow by roughly the size of ffmpeg (tens of MB). The one-file exe unpacks ffmpeg to a temporary folder at start-up; that worked for the other bundled binaries.
+
 ## Image workspace (cloud session, 2026-10-15)
 
 A new **Image** workspace on the top-bar switch (Photos | Image | Music | PDF): a layered picture editor.
@@ -38,4 +76,4 @@ A new **Image** workspace on the top-bar switch (Photos | Image | Music | PDF): 
 - Inside the packaged `Opia.exe` / pywebview window on Windows, and with Windows paths (the save dialogs build paths with `\`). Drag-and-drop of real files, the system clipboard (paste from another app, and whether Copy reaches the Windows clipboard), pen pressure, HEIC / TIFF / RAW opening, very large pictures (memory and speed), and the light themes.
 - Whether `file.path` is available for files picked in the pywebview window (if it is not, opening still works by uploading the file, but "Save" defaults to the export folder instead of the picture's folder, and the file is not added to Opened recently).
 
-**Packaging (needs doing on the PC)**: rebuild `dist\Opia.exe`. No new Python packages are needed for the Image workspace, so the PyInstaller command is unchanged by this entry (see the Video entry above it, if present, for new flags).
+**Packaging (needs doing on the PC)**: rebuild `dist\Opia.exe`. The Image workspace needs no new Python packages; see the Video entry above for the one new PyInstaller flag.

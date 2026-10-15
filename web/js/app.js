@@ -11,7 +11,7 @@ const Keymap = {
     const map = App.conf('keymap', {}); for (const c of Object.values(App.commands)) c.key = map[c.id] ?? this.defaults[c.id];
   },
   async edit() {
-    const map = { ...App.conf('keymap', {}) }, cmds = Object.values(App.commands).filter(c => !/^(kwset|rate|music|pdf|image)\./.test(c.id)).sort((a, b) => a.label.localeCompare(b.label));
+    const map = { ...App.conf('keymap', {}) }, cmds = Object.values(App.commands).filter(c => !/^(kwset|rate|music|pdf|image|video)\./.test(c.id)).sort((a, b) => a.label.localeCompare(b.label));
     const rows = cmds.map(c => { const inp = h('input', { type: 'text', class: 'km-key', readOnly: true, value: map[c.id] ?? this.defaults[c.id], placeholder: 'none', onkeydown: e => { e.preventDefault(); e.stopPropagation(); if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return; inp.value = e.key === 'Backspace' || e.key === 'Delete' ? '' : App.keyName(e); map[c.id] = inp.value; } }); return h('tr', {}, h('td', {}, c.label.replace(/\u2026$/, '')), h('td', {}, inp)); });
     const ok = await UI.dialog({ title: 'Customize Shortcuts', width: 560, body: h('div', {}, h('div', { class: 'fnote' }, 'Click a box and press the keys you want. Backspace clears it.'), h('div', { class: 'scroll' }, h('table', { class: 'tbl' }, rows))), buttons: [['Reset All', 'reset'], ['Cancel', null], ['Save', true, 'primary']] });
     if (!ok) return;
@@ -104,8 +104,16 @@ function registerCommands() {
   I('blur', 'Blur…', '', () => ImgEd.blur()); I('sharpen', 'Sharpen…', '', () => ImgEd.sharpen()); I('noise', 'Add Noise…', '', () => ImgEd.noise()); I('pixelate', 'Pixelate…', '', () => ImgEd.pixelate());
   I('zin', 'Zoom In', 'Ctrl+=', () => ImgEd.zoomBy(1.25)); I('zout', 'Zoom Out', 'Ctrl+-', () => ImgEd.zoomBy(.8)); I('zfit', 'Fit on Screen', 'Ctrl+0', () => ImgEd.setZoom('fit')); I('z100', 'Actual Pixels', 'Ctrl+1', () => ImgEd.setZoom(1));
   C('photo.imageedit', 'Edit in Image Editor', '', () => ImgEd.fromPhoto(App.cur()));
+  const V = (id, label, key, fn, needP = true) => C('video.' + id, label, key, () => { if (App.module !== 'video') return; if (needP && !Vid.p) return UI.toast('Start or open a video project first.'); return fn(); }, { modules: ['video'] });
+  V('new', 'New Project…', 'Ctrl+N', () => Vid.create(), false); V('rename', 'Rename Project…', '', () => Vid.rename()); V('delete', 'Delete Project…', '', () => Vid.del()); V('import', 'Import Media…', 'Ctrl+I', () => Vid.importMedia(), false); V('importdisk', 'Import from Disk…', '', () => Vid.importFromDisk(), false);
+  V('photos', 'Add Selected Photos', '', () => Vid.addPhotos(), false); V('export', 'Export Video…', 'Ctrl+Shift+E', () => Vid.exportDialog()); V('frame', 'Save Frame as Picture…', '', () => Vid.saveFrame()); V('frameimg', 'Edit Frame in Image Editor', '', () => Vid.frameToImage()); V('settings', 'Project Settings…', '', () => Vid.settings());
+  V('undo', 'Undo', 'Ctrl+Z', () => Vid.step(Vid.undo, Vid.redo)); V('redo', 'Redo', 'Ctrl+Y', () => Vid.step(Vid.redo, Vid.undo)); V('split', 'Split at Playhead', 'S', () => Vid.split()); V('del', 'Delete', 'Delete', () => Vid.remove()); V('ripple', 'Delete and Close Gap', 'Shift+Delete', () => Vid.remove(true));
+  V('dup', 'Duplicate', 'Ctrl+D', () => Vid.duplicate()); V('selall', 'Select All Clips', 'Ctrl+A', () => Vid.selectAll()); V('xfade', 'Crossfade with Clip Before', '', () => Vid.crossfade()); V('detach', 'Detach Sound', '', () => Vid.detachAudio()); V('title', 'Add Title', 'T', () => Vid.addTitle());
+  V('vtrack', 'Add Video Track', '', () => Vid.addTrack('video')); V('atrack', 'Add Audio Track', '', () => Vid.addTrack('audio')); V('play', 'Play / Pause', 'Space', () => Vid.toggle()); V('start', 'Go to Start', 'Home', () => Vid.seek(0)); V('end', 'Go to End', 'End', () => Vid.seek(Vid.total()));
+  V('zin', 'Zoom In', 'Ctrl+=', () => Vid.zoom(1.4)); V('zout', 'Zoom Out', 'Ctrl+-', () => Vid.zoom(1 / 1.4)); V('zfit', 'Show Whole Timeline', 'Ctrl+0', () => Vid.zoomFit());
+  C('photo.videoshow', 'Make a Video from Selected Photos', '', () => { App.show('video'); Vid.addPhotos(); });
   C('help.tour', 'Take the Tour', '', () => Tour.start());
-  C('help.about', 'About Opia', '', () => UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`));
+  C('help.about', 'About Opia', '', async () => { const ff = await api('video_ffmpeg').catch(() => ({ ok: false })); UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor, with picture, video, music and PDF workspaces.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nVideo (FFmpeg): ${ff.ok ? ff.version.replace(/ Copyright.*$/, '') : 'not found'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`); });
 }
 
 function buildMenus() {
@@ -145,10 +153,18 @@ function buildMenus() {
     ['View', () => [...looks, 'image.zin', 'image.zout', 'image.zfit', 'image.z100', '-', 'view.full']],
     ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
+  if (App.module === 'video') return App.buildMenus([
+    ['File', Modes.beginner ? ['video.new', 'video.import', 'video.photos', '-', 'video.export', 'video.frame', '-', 'video.settings', 'file.prefs'] : ['video.new', 'video.rename', 'video.delete', '-', 'video.import', 'video.importdisk', 'video.photos', '-', 'video.export', 'video.frame', 'video.frameimg', '-', 'video.settings', 'file.prefs']],
+    ['Edit', Modes.beginner ? ['video.undo', 'video.redo', '-', 'video.split', 'video.del', 'video.dup', 'video.selall'] : ['video.undo', 'video.redo', '-', 'video.split', 'video.del', 'video.ripple', 'video.dup', 'video.selall', '-', 'video.xfade', 'video.detach']],
+    ['Clip', ['video.title', 'video.xfade', ...(Modes.beginner ? [] : ['video.detach', '-', 'video.vtrack', 'video.atrack'])]],
+    ['Playback', ['video.play', 'video.start', 'video.end']],
+    ['View', () => [...looks, 'video.zin', 'video.zout', 'video.zfit', '-', 'view.full']],
+    ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
+  ]);
   if (Modes.beginner) return App.buildMenus([   // the short menus; Advanced has everything
     ['File', ['file.import', 'file.export', '-', 'file.prefs']],
     ['Edit', ['dev.undo', 'dev.redo', '-', 'edit.selectall', 'edit.selectnone']],
-    ['Photo', ['flag.pick', 'flag.none', 'flag.reject', rating, '-', 'photo.rotl', 'photo.rotr', '-', 'dev.auto', 'dev.reset', 'photo.imageedit', '-', 'photo.sharpest', 'photo.duplicates', '-', 'col.new', 'photo.remove']],
+    ['Photo', ['flag.pick', 'flag.none', 'flag.reject', rating, '-', 'photo.rotl', 'photo.rotr', '-', 'dev.auto', 'dev.reset', 'photo.imageedit', 'photo.videoshow', '-', 'photo.sharpest', 'photo.duplicates', '-', 'col.new', 'photo.remove']],
     ['View', () => [...looks, 'view.grid', 'view.loupe', 'go.develop', '-', 'view.full']],
     ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
@@ -159,7 +175,7 @@ function buildMenus() {
     ['Photo', () => ['photo.vcopy', '-', 'flag.pick', 'flag.none', 'flag.reject', rating,
       { label: 'Set Color Label', sub: [...Object.keys(LABELS).map(l => ({ label: l[0].toUpperCase() + l.slice(1), run: () => App.rate({ label: l }) })), { label: 'None', run: () => App.rate({ label: '' }) }] }, 'rate.auto', '-',
       'stack.group', 'stack.ungroup', 'stack.toggle', 'stack.auto', '-', 'photo.rotl', 'photo.rotr', 'photo.fliph', 'photo.flipv', '-',
-      'photo.imageedit', { label: 'Edit In', sub: () => [...App.conf('editors', []).map(ed => ({ label: ed.name, run: () => Ext.editIn(ed) })), { label: 'Configure External Editors…', run: () => App.run('prefs.editors') }] }, { label: 'Photo Merge', sub: [{ label: 'Panorama…', key: 'Ctrl+M', run: () => App.run('merge.pano') }, { label: 'HDR…', key: 'Ctrl+H', run: () => App.run('merge.hdr') }, { label: 'Focus Stack…', run: () => App.run('merge.focus') }] }, '-', 'photo.explorer', 'photo.remove']],
+      'photo.imageedit', 'photo.videoshow', { label: 'Edit In', sub: () => [...App.conf('editors', []).map(ed => ({ label: ed.name, run: () => Ext.editIn(ed) })), { label: 'Configure External Editors…', run: () => App.run('prefs.editors') }] }, { label: 'Photo Merge', sub: [{ label: 'Panorama…', key: 'Ctrl+M', run: () => App.run('merge.pano') }, { label: 'HDR…', key: 'Ctrl+H', run: () => App.run('merge.hdr') }, { label: 'Focus Stack…', run: () => App.run('merge.focus') }] }, '-', 'photo.explorer', 'photo.remove']],
     ['Develop', ['dev.copy', 'dev.paste', 'dev.sync', 'dev.auto', 'dev.reset', '-', 'dev.snapshot', 'dev.preset', '-', 'dev.before', 'dev.reference', 'dev.proof', '-', 'tool.crop', 'tool.spot', 'tool.redeye', 'tool.brush', 'tool.linear', 'tool.radial', 'tool.guided']],
     ['Metadata', ['meta.kwnew', 'edit.keywordsets', '-', 'meta.sync', 'edit.metapresets', '-', 'meta.xmpwrite', 'meta.xmpread', 'meta.exif']],
     ['View', () => [...looks, 'view.grid', 'view.loupe', 'view.compare', 'view.survey', 'view.people', '-', 'view.info', 'view.panels', 'view.film', 'view.full']],
@@ -187,8 +203,8 @@ async function start() {
     new MutationObserver(() => $('#brand').classList.toggle('busy', $('#activity').children.length > 0)).observe($('#activity'), { childList: true });
     $('#identity').replaceChildren(Identity.el()); $('#identity').ondblclick = () => Identity.edit(); $('#identity').title = 'Double-click to customise the identity plate';
     const pick = $('#modpick'); for (const m of MODULES) { App.addModule(m); pick.append(h('a', { data: { m: m.id }, onclick: () => App.show(m.id) }, m.name)); }
-    App.addModule(Music); App.addModule(Pdf); App.addModule(ImgEd);
-    const WORKSPACES = [['image', 'Image', 'Paint, combine pictures in layers, add text, fix colours'], ['music', 'Music', 'Make and edit music'], ['pdf', 'PDF', 'Read, sign, mark up and rearrange PDFs']];
+    App.addModule(Music); App.addModule(Pdf); App.addModule(ImgEd); App.addModule(Vid);
+    const WORKSPACES = [['image', 'Image', 'Paint, combine pictures in layers, add text, fix colours'], ['video', 'Video', 'Edit video on a timeline and export an MP4'], ['music', 'Music', 'Make and edit music'], ['pdf', 'PDF', 'Read, sign, mark up and rearrange PDFs']];
     const own = id => WORKSPACES.some(w => w[0] === id);
     const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg' }, h('a', { class: !own(App.module) ? 'on' : '', title: 'Organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Photos'),
       WORKSPACES.map(([id, label, tip]) => h('a', { class: App.module === id ? 'on' : '', title: tip, onclick: () => App.show(id) }, label))));

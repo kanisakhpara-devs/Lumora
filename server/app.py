@@ -8,8 +8,8 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import core
-from . import catalog, exporter, files, icc, imageedit, imaging, merge, music, pdf, people, plugins, tether, tools, xmp  # noqa: F401  (register APIs)
-from .core import api, cfg, ApiError, Binary
+from . import catalog, exporter, files, icc, imageedit, imaging, merge, music, pdf, people, plugins, tether, tools, video, xmp  # noqa: F401  (register APIs)
+from .core import api, cfg, ApiError, Binary, FileRef
 
 mimetypes.add_type('application/javascript', '.js')
 mimetypes.add_type('text/css', '.css')
@@ -67,6 +67,49 @@ class Handler(BaseHTTPRequestHandler):
             traceback.print_exc()
             self._json({'error': '%s: %s' % (e.__class__.__name__, e)}, 500)
 
+    def _file(self, ref):
+        """Send a file, or the byte range the browser asked for (needed to seek in audio and video)."""
+        size = os.path.getsize(ref.path)
+        start, end, code = 0, size - 1, 200
+        rng = self.headers.get('Range') or ''
+        if rng.startswith('bytes='):
+            a, _, b = rng[6:].split(',')[0].partition('-')
+            try:
+                if a:
+                    start, end = int(a), (int(b) if b else size - 1)
+                elif b:
+                    start = max(0, size - int(b))
+                end = min(end, size - 1)
+                code = 206
+            except ValueError:
+                start, end = 0, size - 1
+            if start > end or start >= size:
+                self.send_response(416)
+                self.send_header('Content-Range', 'bytes */%d' % size)
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+        self.send_response(code)
+        self.send_header('Content-Type', ref.ctype)
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header('Content-Length', str(end - start + 1))
+        if code == 206:
+            self.send_header('Content-Range', 'bytes %d-%d/%d' % (start, end, size))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        try:
+            with open(ref.path, 'rb') as f:
+                f.seek(start)
+                left = end - start + 1
+                while left > 0:
+                    chunk = f.read(min(1 << 20, left))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    left -= len(chunk)
+        except (ConnectionError, OSError):
+            pass
+
     def do_GET(self):
         if not self._trusted():
             return self._send(403, b'forbidden', 'text/plain')
@@ -77,6 +120,8 @@ class Handler(BaseHTTPRequestHandler):
             name, _, rest = path[5:].partition('/')
             if path.startswith('/img/') and name in core.IMG:      # anything else under /img/ is a static file (the icon)
                 res = core.IMG[name](rest, q)
+                if isinstance(res, FileRef):
+                    return self._file(res)
                 return self._send(200, res.data, res.ctype, cache=res.cache and 'v' in q)
             rel = 'index.html' if path in ('/', '') else path.lstrip('/')
             target = os.path.abspath(os.path.join(core.WEB, rel))
@@ -96,7 +141,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(403, b'forbidden', 'text/plain')
         u = urllib.parse.urlparse(self.path)
         q = dict(urllib.parse.parse_qsl(u.query))
-        body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
+        length = int(self.headers.get('Content-Length') or 0)
+        if u.path.startswith('/api/stream/'):
+            fn = core.STREAM.get(u.path[12:])
+            try:
+                if not fn:
+                    self.rfile.read(length)
+                    return self._json({'error': 'unknown upload'}, 404)
+                return self._json({'result': fn(q, self.rfile, length)})
+            except Exception as e:
+                return self._fail(e)
+        body = self.rfile.read(length)
         try:
             if u.path.startswith('/api/upload/'):
                 fn = core.UPLOAD.get(u.path[12:])

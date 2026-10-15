@@ -24,7 +24,8 @@ VERSION = '1.0'
 
 API = {}       # name -> callable(**json_args) returning JSON-able or Binary
 UPLOAD = {}    # name -> callable(query_dict, body_bytes)
-IMG = {}       # name -> callable(rest_of_path, query_dict) returning Binary
+IMG = {}       # name -> callable(rest_of_path, query_dict) returning Binary or FileRef
+STREAM = {}    # name -> callable(query_dict, readable, length): uploads written to disk as they arrive, not held in memory
 
 
 def api(fn):
@@ -40,6 +41,17 @@ def upload(fn):
 def img(fn):
     IMG[fn.__name__] = fn
     return fn
+
+
+def stream(fn):
+    STREAM[fn.__name__] = fn
+    return fn
+
+
+class FileRef:
+    """A file on disk served as it is, with byte ranges, so audio and video can be played and seeked without loading them whole."""
+    def __init__(self, path, ctype='application/octet-stream'):
+        self.path, self.ctype = path, ctype
 
 
 class Binary:
