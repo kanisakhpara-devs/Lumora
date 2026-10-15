@@ -12,35 +12,9 @@ MODELS = os.path.join(ROOT, 'models')
 PLUGINS = os.path.join(ROOT, 'plugins')
 
 
-def _home(pictures=None):
-    """Where catalogs and settings live. The folder from when the app was called Lumora is carried over, along with the paths saved in its config."""
-    env = os.environ.get('OPIA_HOME') or os.environ.get('LUMORA_HOME')
-    if env and not pictures:
-        return env
-    pictures = pictures or os.path.join(os.path.expanduser('~'), 'Pictures')
-    new, old = os.path.join(pictures, 'Opia'), os.path.join(pictures, 'Lumora')
-    if not os.path.isdir(old) or os.path.exists(new):
-        return new
-    try:
-        os.rename(old, new)
-    except OSError:
-        return old              # still in use: carry on there and move it next time
-
-    def moved(v):
-        if isinstance(v, str):
-            return new + v[len(old):] if v.startswith(old + os.sep) else v
-        if isinstance(v, list):
-            return [moved(x) for x in v]
-        return {k: moved(x) for k, x in v.items()} if isinstance(v, dict) else v
-    try:
-        path = os.path.join(new, 'config.json')
-        with open(path, encoding='utf-8') as f:
-            data = moved(json.load(f))
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=1)
-    except (OSError, ValueError):
-        pass
-    return new
+def _home():
+    """Where catalogs and settings live."""
+    return os.environ.get('OPIA_HOME') or os.path.join(os.path.expanduser('~'), 'Pictures', 'Opia')
 
 
 HOME = _home()

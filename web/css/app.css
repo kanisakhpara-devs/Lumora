@@ -265,7 +265,7 @@ body.beginner .stars.big i { font-size: 20px; } body.beginner .mi { padding-top:
 #tip.on { opacity: 1; visibility: visible; } #tip b { display: block; color: var(--gold2); font-size: 13px; margin-bottom: 3px; } #tip span { display: block; } #tip i { display: block; margin-top: 6px; color: var(--dim); font-style: normal; font-size: 11.5px; }
 [data-tip] { cursor: help; } button[data-tip] { cursor: default; } body.beginner #tip { width: 280px; font-size: 13.5px; }
 /* ---- music workspace */
-#apps .seg a { padding: 4px 14px; } body[data-module=music] :is(#modpick, #filmstrip, #tetherbar) { display: none; } body[data-module=music] #modes { margin-left: auto; }
+#apps .seg a { padding: 4px 14px; } body:is([data-module=music], [data-module=pdf]) :is(#modpick, #filmstrip, #tetherbar) { display: none; } body:is([data-module=music], [data-module=pdf]) #modes { margin-left: auto; }
 .center.music { background: var(--grid); } .mu-bar, .mu-tools { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--bar); border-bottom: 1px solid var(--line2); white-space: nowrap; overflow-x: auto; }
 .mu-bar { min-height: 52px; } .mu-tools { gap: 6px; padding: 6px 14px; } .mu-tools::-webkit-scrollbar, .mu-bar::-webkit-scrollbar { height: 0; }
 .mu-play { min-width: 96px; padding: 7px 18px; font-size: 13.5px; } .mu-rec { color: #e2574c; } .mu-rec.on { background: #e2574c; border-color: #e2574c; color: #fff; animation: pulse 1s ease-in-out infinite; }
@@ -310,3 +310,30 @@ body.mu-playing #brand .lg-bars path { animation: mu-bars .5s ease-in-out infini
 @keyframes mu-bars { from { transform: scaleY(.45); } to { transform: scaleY(1.15); } }
 body[data-module=music] { --gold: #ff5a3c; --gold2: #ff8a73; --onacc: #ffffff; --sel: #3a1d17; --cellsel: #40221b; --cellact: #55291f; }
 [data-theme=midnight] body[data-module=music] { --sel: #33201c; } [data-theme=porcelain] body[data-module=music], [data-theme=lilac] body[data-module=music] { --gold: #e8482b; --gold2: #c93a20; --sel: #fde3dc; --cellsel: #fbe0d8; --cellact: #f8cfc4; }
+
+/* ---- PDF workspace */
+.pd-stage { flex: 1; min-height: 0; display: flex; position: relative; } .pd-stage.empty { align-items: center; justify-content: center; overflow: auto; }
+.pd-welcome { max-width: 620px; padding: 30px; text-align: center; } .pd-welcome h2 { margin: 0 0 6px; font-size: 30px; font-weight: 800; color: var(--hi); } .pd-welcome p { font-size: 14px; line-height: 1.55; margin: 8px 0; }
+.pd-big { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 22px 0 14px; } .pd-recent { margin-top: 26px; text-align: left; display: flex; flex-direction: column; gap: 2px; } .pd-recent a { padding: 6px 10px; border-radius: 8px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .pd-recent a:hover { background: var(--raise); color: var(--hi); }
+.pd-bar .pd-find { width: 170px; border-radius: 999px; padding: 4px 12px; } .pd-zoom { min-width: 44px; text-align: center; cursor: pointer; font-weight: 700; } .pd-zoom:hover { color: var(--hi); } .pd-where { margin-left: 6px; }
+.pd-toolseg a { padding: 4px 12px; cursor: pointer; } .pd-tools .swatch { width: 18px; height: 18px; border: 1px solid var(--line2); } .pd-hint { margin-left: 10px; overflow: hidden; text-overflow: ellipsis; }
+.pd-strip { width: 150px; flex: none; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line2); padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.pd-strip a { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; } .pd-strip a.on { border-color: var(--gold); background: var(--sel); } .pd-strip i, .pd-cell i { font-style: normal; font-size: 11px; color: var(--dim); font-weight: 700; }
+.pd-scroll { flex: 1; min-width: 0; overflow: auto; } .pd-read { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px 24px 60px; } .pd-read > .pd-page { margin: 0 auto; }
+.pd-page { position: relative; flex: none; background: #fff; box-shadow: 0 2px 14px var(--shadow); overflow: hidden; } .pd-in { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.pd-in > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; } .pd-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; touch-action: none; }
+.pd-stage[data-tool=select] .pd-read .pd-svg { cursor: default; } .pd-stage[data-tool=select] .pd-read .pd-a { cursor: move; } .pd-stage:not([data-tool=select]) .pd-read .pd-svg { cursor: crosshair; } .pd-stage[data-tool=text] .pd-read .pd-svg { cursor: text; }
+.pd-chrome rect { fill: none; stroke: #2f6bff; pointer-events: none; } .pd-handle { fill: #fff; stroke: #2f6bff; cursor: nwse-resize; } .pd-hit { fill: #ffd400; opacity: .4; pointer-events: none; mix-blend-mode: multiply; } .pd-hit.on { fill: #ff7b00; opacity: .55; }
+.pd-edit { position: absolute; margin: 0; padding: 0; border: 0; outline: 1px dashed #2f6bff; outline-offset: 3px; background: rgba(255,255,255,.6); resize: none; overflow: hidden; white-space: pre; border-radius: 0; min-width: 20px; }
+.pd-fields { position: absolute; inset: 0; pointer-events: none; } .pd-fields > * { position: absolute; margin: 0; padding: 0 2px; border: 1px solid rgba(47,107,255,.45); border-radius: 0; background: rgba(214,228,255,.75); color: #111; font-family: Arial, Helvetica, sans-serif; font-weight: 400; resize: none; }
+.pd-fields > *:focus { background: #fff; border-color: #2f6bff; } .pd-stage[data-tool=select] .pd-fields > * { pointer-events: auto; } .pd-fields input[type=checkbox], .pd-fields input[type=radio] { accent-color: #1b3fb5; }
+.pd-grid { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; padding: 18px; } .pd-cell { position: relative; width: 184px; height: 228px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 2px solid transparent; border-radius: 10px; cursor: pointer; }
+.pd-cell:hover { background: var(--raise); } .pd-cell.sel { border-color: var(--gold); background: var(--sel); } .pd-cell .pd-page, .pd-strip .pd-page { pointer-events: none; box-shadow: 0 1px 6px var(--shadow); }
+.pd-cell.drop-b::before, .pd-cell.drop-a::after { content: ""; position: absolute; top: 8px; bottom: 8px; width: 4px; border-radius: 2px; background: var(--gold); } .pd-cell.drop-b::before { left: -6px; } .pd-cell.drop-a::after { right: -6px; }
+.pd-form { display: flex; flex-direction: column; gap: 10px; } .pd-form p { margin: 2px 0; white-space: pre-line; } .pd-row { display: flex; gap: 6px; } .pd-row input { flex: 1; } .pd-sig { width: 100%; height: auto; background: #fff; border: 1px solid var(--line2); border-radius: 8px; touch-action: none; cursor: crosshair; display: block; margin: 8px 0; }
+body.beginner .pd-toolseg a { padding: 7px 16px; font-size: 14px; } body.beginner .pd-strip { width: 170px; }
+/* Opia PDF: the page icon in the top bar, and its sky-blue accent */
+.lg-pdf { display: none; } .lg-page { fill: var(--logo-bg); } .lg-fold { fill: #5cc8ff; stroke: #5cc8ff; stroke-width: 4; stroke-linejoin: round; } .lg-ring { fill: none; stroke: #F4F1EA; stroke-width: 14; } .lg-pdot { fill: #5cc8ff; }
+body[data-module=pdf] #brand :is(.lg-bg, .lg-o, .lg-orbit) { display: none; } body[data-module=pdf] #brand .lg-pdf { display: block; } .pd-logo { width: 92px; height: 92px; display: block; margin: 0 auto 6px; }
+body[data-module=pdf] { --gold: #5cc8ff; --gold2: #9bdcff; --onacc: #06202e; --sel: #12303f; --cellsel: #143445; --cellact: #184256; }
+[data-theme=porcelain] body[data-module=pdf], [data-theme=lilac] body[data-module=pdf] { --gold: #1387c9; --gold2: #0b6aa3; --onacc: #ffffff; --sel: #d9effc; --cellsel: #d9effc; --cellact: #bfe2f8; }

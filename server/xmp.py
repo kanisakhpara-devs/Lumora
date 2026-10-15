@@ -12,7 +12,7 @@ NS = {
     'dc': 'http://purl.org/dc/elements/1.1/', 'crs': 'http://ns.adobe.com/camera-raw-settings/1.0/',
     'lr': 'http://ns.adobe.com/lightroom/1.0/', 'photoshop': 'http://ns.adobe.com/photoshop/1.0/',
     'Iptc4xmpCore': 'http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/', 'exif': 'http://ns.adobe.com/exif/1.0/',
-    'xmpRights': 'http://ns.adobe.com/xap/1.0/rights/', 'opia': 'https://github.com/kanisakhpara-devs/Opia/ns/1.0/', 'lumora': 'https://lumora.app/ns/1.0/',
+    'xmpRights': 'http://ns.adobe.com/xap/1.0/rights/', 'opia': 'https://github.com/kanisakhpara-devs/Opia/ns/1.0/',
 }
 # our develop key -> Camera Raw name, so other raw converters can read the common adjustments
 CRS = {
@@ -213,9 +213,9 @@ def read_sidecar(path):
                     pass
             elif k == _q('xmp', 'Label'):
                 out['label'] = v
-            elif k in (_q('opia', 'Flag'), _q('lumora', 'Flag')):
+            elif k == _q('opia', 'Flag'):
                 out['flag'] = int(v)
-            elif k in (_q('opia', 'Settings'), _q('lumora', 'Settings')):
+            elif k == _q('opia', 'Settings'):
                 try:
                     out['develop'] = json.loads(v)
                 except ValueError:

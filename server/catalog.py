@@ -11,7 +11,7 @@ from . import core
 from .core import api, cfg, ApiError
 
 EXT, DATA = '.opiacat', '.opiadata'
-OLD_EXTS, OLD_DATAS = ('.lumcat', '.lrcat'), ('.lumdata', '.lrdata')      # what catalogs and preview folders were called before
+OLD_EXTS, OLD_DATAS = ('.lrcat',), ('.lrdata',)      # what catalogs and preview folders were called before
 CAT_EXTS, DATA_EXTS = (EXT,) + OLD_EXTS, (DATA,) + OLD_DATAS
 
 

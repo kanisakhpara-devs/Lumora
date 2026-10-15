@@ -3,15 +3,25 @@
 A local photo organizer and editor: Library, Develop, Map, Book, Slideshow, Print and Web modules.
 A Python engine handles the disk, catalogs, colour management and export; the interface renders every edit on the GPU (WebGL 2).
 
-## Two workspaces
+## Three workspaces
 
-**Photos** is the organizer and editor described below. **Music** (the switch beside the logo) is a small studio:
+**Photos** is the organizer and editor described below. **Music** and **PDF** sit beside it on the switch next to the logo.
+
+**Music** is a small studio:
 
 - *Beginner* is a jam board. Riff cards for drums, bass, chords and melody loop together; "Start me off" drafts a song in a style, and "New idea" rewrites one part to fit the rest. Notes are limited to the song's scale.
 - *Advanced* puts the same song on a timeline with a mixer, and gives audio tracks range editing (split, cut, copy, paste, trim), effects (fades, amplify, normalize, compressor, filters, echo, reverb, reverse, pitch, tempo, speed, noise reduction), a spectrogram view, and silence/tone/noise generators.
 - Import audio or MIDI, record from the microphone, use your own samples for any drum or as an instrument, and export WAV, MP3, FLAC, OGG, per-track stems or MIDI.
 
 Ten instruments are recordings of real ones (piano, electric piano, two guitars, bass, strings, violin, cello, flute, trumpet), taken from the Fluid R3 GM SoundFont under CC BY 3.0; see `web/samples/CREDITS.md`. The other instruments and all drum kits are synthesised in the app. Songs are kept in `Pictures\Opia\Music\<song>`.
+
+**PDF** is for reading and changing PDFs:
+
+- *Edit* view: type text anywhere, highlight, draw, drop in ticks and crosses, place a signature you draw once, cover things up, add boxes, ovals, lines, arrows and pictures, and fill in real form fields. Find text across the document.
+- *Pages* view: drag pages into a new order, rotate, duplicate, delete, insert blank pages, extract pages, and add more PDFs or pictures to combine everything into one file.
+- More: page numbers, a watermark, a password, a smaller file size on Save As, splitting into several files, saving pages as PNG or JPEG, and saving all the text.
+
+The files you open are never changed; saving builds a new PDF. What you add is drawn into the page, so it looks the same in every viewer, and it cannot be edited again after the saved file is reopened. Existing text in a PDF cannot be rewritten, scanned pages are not read (no OCR), and Cover Up hides what is under it without removing it from the file.
 
 ## Run it
 
@@ -25,7 +35,7 @@ The app opens in its own window (Edge or Chrome in app mode). Closing the window
 
 Options: `--port N`, `--no-window` (open the printed URL yourself), `--catalog path\to\file.opiacat`, `--home folder`.
 
-Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview pillow-heif` (already installed on this machine).
+Needs Python 3.10+ with `Pillow numpy opencv-python-headless rawpy exifread soundfile pywebview pillow-heif pypdf pypdfium2 cryptography` (already installed on this machine).
 
 ## Where things live
 
@@ -65,7 +75,7 @@ See `plugins\contact_sheet` and `plugins\export_manifest`.
 
 ## Honest limits
 
-- **`.opiacat` catalogs** are Opia's own SQLite schema and cannot be opened by other photo applications. Catalogs from when the app was called Lumora (`.lumcat` or `.lrcat`, with `.lumdata` or `.lrdata` previews) are renamed automatically the first time they are opened, and the `Pictures\Lumora` folder becomes `Pictures\Opia`.
+- **`.opiacat` catalogs** are Opia's own SQLite schema and cannot be opened by other photo applications. Catalogs saved under the earlier `.lrcat` extension (with `.lrdata` previews) are renamed automatically the first time they are opened.
 - **Editing is 8-bit sRGB.** RAW files are decoded through LibRaw to 8-bit before editing, so there is less highlight/shadow latitude than a true raw pipeline.
 - **Smart Previews** are 2560 px JPEGs (not lossy DNG). They keep photos editable while the originals are offline.
 - **Tethering** is a watched folder (point your camera maker's utility at it) plus direct capture from any camera Windows exposes as a webcam. There is no direct USB camera control.

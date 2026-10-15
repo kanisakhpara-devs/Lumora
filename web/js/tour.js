@@ -7,7 +7,7 @@ const Tour = {
   steps: [
     { title: 'Welcome to Opia', text: 'A one-minute tour of where everything lives. Just follow the little blue dot.' },
     { sel: '#modpick', at: 'below', title: 'Seven modules', text: 'Library organises and Develop edits. Map, Book, Slideshow, Print and Web turn your photos into something to share. Switch here, or press Ctrl+Alt+1 to 7.' },
-    { sel: '#apps', at: 'below', title: 'Photos and Music', text: 'Opia is two workspaces. Photos is where this tour continues. Music is a studio for making songs from short riffs and for editing audio.' },
+    { sel: '#apps', at: 'below', title: 'Photos, Music and PDF', text: 'Opia is three workspaces. Photos is where this tour continues. Music is a studio for making songs from short riffs and for editing audio. PDF is for reading, signing and rearranging PDFs.' },
     { sel: '#mod-library .side.left', at: 'right', title: 'Your sources', text: 'Catalog, Folders and Collections decide which photos you are looking at. Open Local Disk to add a folder, or use File > Import Photos.' },
     { sel: '#lib-views', at: 'inside', title: 'The grid', text: 'Every photo in the current source. Press 1 to 5 to rate, P to flag a pick and X to reject. G and E switch between Grid and Loupe.' },
     { sel: '#lib-filter', at: 'below', title: 'Find anything', text: 'Narrow the grid by text, flags or stars. Ctrl+L turns the filters on and off.' },

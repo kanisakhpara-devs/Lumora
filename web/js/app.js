@@ -11,7 +11,7 @@ const Keymap = {
     const map = App.conf('keymap', {}); for (const c of Object.values(App.commands)) c.key = map[c.id] ?? this.defaults[c.id];
   },
   async edit() {
-    const map = { ...App.conf('keymap', {}) }, cmds = Object.values(App.commands).filter(c => !/^(kwset|rate|music)\./.test(c.id)).sort((a, b) => a.label.localeCompare(b.label));
+    const map = { ...App.conf('keymap', {}) }, cmds = Object.values(App.commands).filter(c => !/^(kwset|rate|music|pdf)\./.test(c.id)).sort((a, b) => a.label.localeCompare(b.label));
     const rows = cmds.map(c => { const inp = h('input', { type: 'text', class: 'km-key', readOnly: true, value: map[c.id] ?? this.defaults[c.id], placeholder: 'none', onkeydown: e => { e.preventDefault(); e.stopPropagation(); if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return; inp.value = e.key === 'Backspace' || e.key === 'Delete' ? '' : App.keyName(e); map[c.id] = inp.value; } }); return h('tr', {}, h('td', {}, c.label.replace(/\u2026$/, '')), h('td', {}, inp)); });
     const ok = await UI.dialog({ title: 'Customize Shortcuts', width: 560, body: h('div', {}, h('div', { class: 'fnote' }, 'Click a box and press the keys you want. Backspace clears it.'), h('div', { class: 'scroll' }, h('table', { class: 'tbl' }, rows))), buttons: [['Reset All', 'reset'], ['Cancel', null], ['Save', true, 'primary']] });
     if (!ok) return;
@@ -82,12 +82,19 @@ function registerCommands() {
   M('undo', 'Undo', '', () => Music.step(Music.undo, Music.redo)); M('redo', 'Redo', '', () => Music.step(Music.redo, Music.undo)); M('cut', 'Cut', '', () => Music.cut()); M('copy', 'Copy', '', () => Music.copy()); M('paste', 'Paste', '', () => Music.paste());
   M('delete', 'Delete', '', () => Music.remove(true)); M('silence', 'Silence', '', () => Music.remove(false)); M('split', 'Split', '', () => Music.splitHere()); M('trim', 'Trim to Selection', '', () => Music.trim());
     for (const r of ['drums', 'bass', 'chords', 'melody']) M('add.' + r, 'Add ' + ROLES[r].name, '', () => Music.addTrack(r));
+  const P = (id, label, key, fn, needDoc = true) => C('pdf.' + id, label, key, () => { if (App.module !== 'pdf') return; if (needDoc && !Pdf.doc) return UI.toast('Open a PDF first.'); return fn(); }, { modules: ['pdf'] });
+  P('open', 'Open…', 'Ctrl+O', () => Pdf.open(), false); P('add', 'Add Files…', '', () => Pdf.add(), false); P('save', 'Save', 'Ctrl+S', () => Pdf.save()); P('saveas', 'Save As…', 'Ctrl+Shift+S', () => Pdf.saveAs()); P('close', 'Close Document', '', () => Pdf.close());
+  P('images', 'Save Pages as Pictures…', '', () => Pdf.exportImages()); P('text', 'Save All Text…', '', () => Pdf.exportText()); P('split', 'Split into Several Files…', '', () => Pdf.split());
+  P('undo', 'Undo', 'Ctrl+Z', () => Pdf.step(Pdf.undo, Pdf.redo)); P('redo', 'Redo', 'Ctrl+Y', () => Pdf.step(Pdf.redo, Pdf.undo)); P('delete', 'Delete', 'Delete', () => Pdf.del()); P('selall', 'Select All Pages', 'Ctrl+A', () => Pdf.selectAll()); P('find', 'Find…', 'Ctrl+F', () => Pdf.keys['Ctrl+F']());
+  P('rotl', 'Rotate Left', '', () => Pdf.rotate(-90)); P('rotr', 'Rotate Right', '', () => Pdf.rotate(90)); P('dup', 'Duplicate Page', 'Ctrl+D', () => Pdf.duplicate()); P('delpage', 'Delete Page', '', () => Pdf.removePages()); P('blank', 'Insert Blank Page', '', () => Pdf.blank());
+  P('extract', 'Extract Pages…', '', () => Pdf.saveAs(Pdf.targets())); P('numbers', 'Page Numbers…', '', () => Pdf.numbers()); P('watermark', 'Watermark…', '', () => Pdf.watermark()); P('password', 'Password…', '', () => Pdf.protect()); P('props', 'Properties…', '', () => Pdf.props());
+  P('edit', 'Edit View', '', () => Pdf.setView('edit')); P('pages', 'Pages View', '', () => Pdf.setView('pages')); P('zin', 'Zoom In', 'Ctrl+=', () => Pdf.zoomBy(1.2)); P('zout', 'Zoom Out', 'Ctrl+-', () => Pdf.zoomBy(1 / 1.2)); P('zfit', 'Fit Page to Window', 'Ctrl+0', () => Pdf.setZoom('fit'));
   C('help.tour', 'Take the Tour', '', () => Tour.start());
   C('help.about', 'About Opia', '', () => UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`));
 }
 
 function buildMenus() {
-  const recent = () => (App.cfg.recent_catalogs || []).slice(0, 6).map(p => ({ label: p.split(/[\\/]/).pop().replace(/\.(opiacat|lumcat|lrcat)$/i, ''), checked: p === App.info.path, run: () => Catalogs.switchTo(p) }));
+  const recent = () => (App.cfg.recent_catalogs || []).slice(0, 6).map(p => ({ label: p.split(/[\\/]/).pop().replace(/\.(opiacat|lrcat)$/i, ''), checked: p === App.info.path, run: () => Catalogs.switchTo(p) }));
   const rating = { label: 'Set Rating', sub: [0, 1, 2, 3, 4, 5].map(r => ({ label: r ? '★'.repeat(r) : 'None', key: String(r), run: () => App.rate({ rating: r }) })) };
   const looks = [{ label: 'Theme', sub: looksMenu('theme') }, { label: 'Language', sub: looksMenu('lang') }, '-', 'mode.beginner', 'mode.trackpad', '-'];
   if (App.module === 'music') return App.buildMenus([
@@ -96,6 +103,13 @@ function buildMenus() {
     ['Track', ['music.add.drums', 'music.add.bass', 'music.add.chords', 'music.add.melody', 'music.import']],
     ...(Modes.beginner ? [] : [['Effects', () => Music.fxItems()], ['Generate', () => Music.genItems()]]),
     ['View', () => [...looks, 'view.full']],
+    ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
+  ]);
+  if (App.module === 'pdf') return App.buildMenus([
+    ['File', Modes.beginner ? ['pdf.open', 'pdf.add', '-', 'pdf.save', 'pdf.images', '-', 'pdf.close', 'file.prefs'] : ['pdf.open', 'pdf.add', '-', 'pdf.save', 'pdf.saveas', '-', 'pdf.images', 'pdf.text', 'pdf.split', '-', 'pdf.props', 'pdf.close', '-', 'file.prefs']],
+    ['Edit', ['pdf.undo', 'pdf.redo', '-', 'pdf.delete', 'pdf.selall', 'pdf.find']],
+    ['Page', ['pdf.rotl', 'pdf.rotr', 'pdf.dup', 'pdf.delpage', 'pdf.blank', '-', 'pdf.extract', 'pdf.numbers', ...(Modes.beginner ? [] : ['pdf.watermark']), 'pdf.password']],
+    ['View', () => [...looks, 'pdf.edit', 'pdf.pages', '-', 'pdf.zin', 'pdf.zout', 'pdf.zfit', '-', 'view.full']],
     ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
   if (Modes.beginner) return App.buildMenus([   // the short menus; Advanced has everything
@@ -137,9 +151,10 @@ async function start() {
     new MutationObserver(() => $('#brand').classList.toggle('busy', $('#activity').children.length > 0)).observe($('#activity'), { childList: true });
     $('#identity').replaceChildren(Identity.el()); $('#identity').ondblclick = () => Identity.edit(); $('#identity').title = 'Double-click to customise the identity plate';
     const pick = $('#modpick'); for (const m of MODULES) { App.addModule(m); pick.append(h('a', { data: { m: m.id }, onclick: () => App.show(m.id) }, m.name)); }
-    App.addModule(Music);
-    const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg' }, h('a', { class: App.module !== 'music' ? 'on' : '', title: 'Organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Photos'), h('a', { class: App.module === 'music' ? 'on' : '', title: 'Make and edit music', onclick: () => App.show('music') }, 'Music')));
-    App.on('module', id => { if (id !== 'music') App.lastPhoto = id; apps(); buildMenus(); dispatchEvent(new Event('resize')); });
+    App.addModule(Music); App.addModule(Pdf);
+    const own = id => id === 'music' || id === 'pdf';
+    const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg' }, h('a', { class: !own(App.module) ? 'on' : '', title: 'Organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Photos'), h('a', { class: App.module === 'music' ? 'on' : '', title: 'Make and edit music', onclick: () => App.show('music') }, 'Music'), h('a', { class: App.module === 'pdf' ? 'on' : '', title: 'Read, sign, mark up and rearrange PDFs', onclick: () => App.show('pdf') }, 'PDF')));
+    App.on('module', id => { if (!own(id)) App.lastPhoto = id; apps(); buildMenus(); dispatchEvent(new Event('resize')); });
     Dev.el = UI.shell('develop'); Dev.init(Dev.el); GLR.init(Dev.cv);
     Film.init();
     await App.loadCatalog();
