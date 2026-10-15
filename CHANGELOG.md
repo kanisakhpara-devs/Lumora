@@ -3,6 +3,23 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Music: drag and drop audio like a video editor (cloud session, 2026-10-15)
+
+You asked for Filmora / Canva-style dragging of audio in the Music workspace's Advanced timeline.
+
+**Changed** (`web/js/music.js`, `web/css/app.css`)
+- **Drop sound files from your computer onto the timeline, and they land where you let go.** Over an audio track, the sound is added to that track at that moment. Anywhere else (a drums / bass / chords / melody lane, the ruler or empty space), it gets a new audio track starting there. While dragging, a line and a label show where it will land ("Add to Vocals at 0:15" or "New audio track at 0:04"). Several files dropped at once go one after another. Before, a dropped file always got a new track at the cursor. Beginner mode still adds dropped files from the start of the song.
+- **Drag a clip by any part of it**, not just its thin name strip, to move it in time, **and onto another audio track**.
+- **Drag either end of a clip to trim it** (the start cannot go before the beginning of the recording, the end not past its end). Snap to the beat applies; hold Alt to place freely.
+- A plain click on a clip still selects it and puts the cursor there. **Selecting part of a clip's waveform is now Shift-drag**, because a plain drag moves the clip. A drag on empty lane space still selects a range as before.
+- The fade dots at the top corners of a clip still set fade in and out.
+- Unchanged: clicking a bar in a drums / bass / chords / melody lane turns that part on or off for that bar. That is the "it hides itself" behaviour; it was not removed.
+- Spanish text for the new hints.
+
+**Tested** (headless Chromium, Playwright, real server): drag-and-drop of a WAV over a riff lane (new track at the drop time), over an audio track (added to it at the drop time), and over the ruler (new track); dragging a clip to another audio track; trimming the end and the start (in point moved correctly); click selects without moving; Shift-drag selects a range; undo; riff bar clicks still toggle. No page or console errors.
+**Not tested**: in the Windows exe / WebView2, with real files dragged from Explorer (the test made the drag-and-drop events in the page), and compressed formats like MP3 or M4A on Windows.
+**Accessibility note**: moving and trimming clips this way needs a mouse, pen or touch, as before. Clips can still be edited with the Edit buttons and keys (S to split, Ctrl+X / C / V).
+
 ## Bug check and accessibility check, whole app (cloud session, 2026-10-15)
 
 **How it was checked**

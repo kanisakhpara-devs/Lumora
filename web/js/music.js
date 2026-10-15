@@ -30,8 +30,9 @@ const Music = {
     el.center.append(this.bar, this.tools, this.stage, this.editor);
     Player.onstop = () => { if (this.song) this.drawBar(); };
     document.addEventListener('keydown', e => { if (!this.live || App.module !== 'music' || e.ctrlKey || e.altKey || e.metaKey || $('#overlays').children.length || (e.target.matches && e.target.matches('input:not([type=range]),textarea,select'))) return; const i = 'ASDFGHJKL;'.indexOf(e.key.toUpperCase()); if (i < 0) return; e.preventDefault(); e.stopPropagation(); if (!e.repeat) this.strike(i); }, true);
-    this.stage.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
-    this.stage.addEventListener('drop', async e => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { this.addAudio(await Player.ready().decodeAudioData(await f.arrayBuffer()), f.name.replace(/\.[^.]+$/, ''), null, Modes.beginner ? 0 : this.cursor); } catch (err) { UI.toast(f.name + ' could not be read as audio.', 'error'); } } });
+    this.stage.addEventListener('dragover', e => { if (![...e.dataTransfer.types].includes('Files')) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; this.dropHint(e); });
+    this.stage.addEventListener('dragleave', e => { if (!this.stage.contains(e.relatedTarget)) this.dropHint(null); });
+    this.stage.addEventListener('drop', e => { e.preventDefault(); this.dropFiles(e).catch(UI.error); });
     App.on('prefs', k => { if (k === 'beginner') this.draw(); });
     App.on('theme', () => this.draw());
     this.saveSoon = debounce(() => this.save().catch(UI.error), 900);
@@ -136,6 +137,34 @@ const Music = {
   addAudio(buf, name, path, at = 0, trim = 0) {
     const id = uid(); Player.bufs.set(id, buf); if (path) this.files.set(id, path);
     this.edit(() => { const tr = { id: uid(), role: 'audio', type: 'audio', name, vol: .9, clips: [{ id: uid(), buf: id, start: at, off: trim, dur: buf.duration - trim, gain: 1 }] }; this.song.tracks.push(tr); this.sel = this.fresh = tr.id; this.fit(); });
+  },
+  /* Where a file being dragged in would land: a track (an audio track under the pointer, or a new one) and a time */
+  dropSpot(e) {
+    if (Modes.beginner || !$('.tl-scroll', this.stage)) return { tr: null, at: 0 };
+    const row = e.target.closest && e.target.closest('.tl-row:not(.top)'), lane = $('.tl-row.top .tl-lane', this.stage), tr = row && this.track(row.dataset.id);
+    const at = lane ? this.timeAt(e, lane) : this.cursor;
+    return { tr: tr && tr.type === 'audio' ? tr : null, at, row: tr && tr.type === 'audio' ? row : null };
+  },
+  dropHint(e) {
+    $$('.tl-drop', this.stage).forEach(x => x.remove()); $$('.tl-row.drop', this.stage).forEach(x => x.classList.remove('drop'));
+    if (!e) return; const sp = this.dropSpot(e), content = $('.tl-content', this.stage); if (!content) return;
+    if (sp.row) sp.row.classList.add('drop');
+    content.append(h('div', { class: 'tl-drop', style: { left: 340 + sp.at * this.pps + 'px' } }, h('span', {}, (sp.tr ? 'Add to ' + sp.tr.name : 'New audio track') + ' at ' + fmtTime(sp.at))));
+  },
+  async dropFiles(e) {
+    const sp = this.dropSpot(e); this.dropHint(null); let at = sp.at, tr = sp.tr;
+    for (const f of e.dataTransfer.files) {
+      let buf; try { buf = await Player.ready().decodeAudioData(await f.arrayBuffer()); } catch (err) { UI.toast(f.name + ' could not be read as audio.', 'error'); continue; }
+      const name = f.name.replace(/\.[^.]+$/, '');
+      if (tr) this.addClip(tr, buf, name, f.path || null, at); else { this.addAudio(buf, name, f.path || null, at); tr = Modes.beginner ? null : this.track(this.sel); }
+      at += buf.duration;     // several files go one after another
+    }
+  },
+  /* put a sound on an existing audio track; anything already there from that point on is left where it is */
+  addClip(tr, buf, name, path, at) {
+    const id = uid(); Player.bufs.set(id, buf); if (path) this.files.set(id, path);
+    this.edit(() => { const c = { id: uid(), buf: id, start: Math.max(0, at), off: 0, dur: buf.duration, gain: 1 }; tr.clips.push(c); this.sel = tr.id; this.clipSel = c.id; this.range = null; this.fit(); });
+    UI.toast(name + ' added to ' + tr.name);
   },
   async importAudio() {
     const path = await UI.pickFile(App.conf('music_dir', App.boot.pictures) + '\\x', Object.keys({ '.wav': 1, '.mp3': 1, '.ogg': 1, '.flac': 1, '.m4a': 1, '.aac': 1, '.opus': 1, '.webm': 1 })); if (!path) return;
@@ -521,7 +550,8 @@ const Music = {
         for (const c of tr.clips) {
           const buf = Player.bufs.get(c.buf), w = Math.max(2, c.dur * pps), cv = h('canvas', { width: Math.min(16000, Math.ceil(w)), height: 52 });
           if (buf) { if (this.spec) drawSpec(cv, buf, c.buf, c.off, c.dur); else drawWave(cv, buf, c.off, c.dur, ROLES.audio.color); }
-          lane.append(h('div', { class: 'tl-clip' + (c.id === this.clipSel ? ' sel' : ''), style: { left: c.start * pps + 'px', width: w + 'px' } }, h('div', { class: 'tl-grip', title: 'Drag to move this clip', onmousedown: e => this.clipDown(e, tr, c) }, buf ? tr.name : 'missing audio'), cv,
+          lane.append(h('div', { class: 'tl-clip' + (c.id === this.clipSel ? ' sel' : ''), style: { left: c.start * pps + 'px', width: w + 'px' }, title: 'Drag to move it, also onto another audio track. Drag an end to trim it. Shift-drag to select part of it.', onmousedown: e => this.clipDown(e, tr, c) }, h('div', { class: 'tl-grip' }, buf ? tr.name : 'missing audio'), cv,
+            h('i', { class: 'tl-edge l', title: 'Drag to trim the start' }), h('i', { class: 'tl-edge r', title: 'Drag to trim the end' }),
             h('div', { class: 'tl-fade in', style: { width: (c.fi || 0) * pps + 'px' } }), h('div', { class: 'tl-fade out', style: { width: (c.fo || 0) * pps + 'px' } }),
             h('i', { class: 'tl-fh in', title: 'Drag right to fade this clip in', style: { left: (c.fi || 0) * pps + 'px' }, onmousedown: e => this.fadeDown(e, c, 'fi') }), h('i', { class: 'tl-fh out', title: 'Drag left to fade this clip out', style: { right: (c.fo || 0) * pps + 'px' }, onmousedown: e => this.fadeDown(e, c, 'fo') })));
         }
@@ -548,7 +578,7 @@ const Music = {
   timeAt(e, lane) { return this.snapTo(Math.max(0, (e.clientX - lane.getBoundingClientRect().left) / this.pps), e); },
   seek(e, lane) { this.cursor = this.timeAt(e, lane); this.range = null; if (Player.playing) Player.play(this.cursor); else Player.pos = this.cursor; this.drawTimeline(); },
   laneDown(e, tr, lane) {
-    if (e.button || e.target.closest('.tl-grip')) return;
+    if (e.button || (e.target.closest('.tl-clip') && !e.shiftKey)) return;
     const a = this.timeAt(e, lane), box = h('div', { class: 'tl-range' }); let b = a, moved = false; lane.append(box);
     const mv = ev => { b = this.timeAt(ev, lane); if (Math.abs(b - a) * this.pps > 3) moved = true; Object.assign(box.style, { left: Math.min(a, b) * this.pps + 'px', width: Math.abs(b - a) * this.pps + 'px' }); };
     const up = () => {
@@ -563,15 +593,34 @@ const Music = {
     const mv = ev => { c[key] = clamp(v0 + dir * (ev.clientX - x0) / this.pps, 0, c.dur / 2); };
     const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); this.changed(); Player.refresh(); this.drawTimeline(); }; addEventListener('mousemove', mv); addEventListener('mouseup', up);
   },
+  /* Drag a clip: the middle moves it (along, or onto another audio track), an end trims it. A click selects it. */
   clipDown(e, tr, c) {
-    const x0 = e.clientX, s0 = c.start, el = e.currentTarget.parentNode; let moved = false; e.preventDefault(); e.stopPropagation(); this.mark();
-    const mv = ev => { c.start = this.snapTo(Math.max(0, s0 + (ev.clientX - x0) / this.pps), ev); if (Math.abs(ev.clientX - x0) > 2) moved = true; el.style.left = c.start * this.pps + 'px'; };
-    const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); if (!moved) this.undo.pop(); else { this.fit(); this.changed(); Player.refresh(); } this.sel = tr.id; this.clipSel = c.id; this.range = null; this.draw(); };
+    if (e.button || e.shiftKey || e.target.closest('.tl-fh')) return;      // Shift-drag selects a range (laneDown); the dots are the fades
+    const el = e.currentTarget, edge = e.target.classList.contains('tl-edge') ? (e.target.classList.contains('l') ? 'l' : 'r') : null, buf = Player.bufs.get(c.buf);
+    const x0 = e.clientX, o = { start: c.start, off: c.off, dur: c.dur }, lane0 = el.parentNode; let moved = false, home = tr;
+    e.preventDefault(); e.stopPropagation(); this.mark(); el.classList.add('drag');
+    const mv = ev => {
+      const dx = (ev.clientX - x0) / this.pps; if (!moved && Math.abs(ev.clientX - x0) < 3) return; moved = true;
+      if (edge === 'l') { const s = clamp(this.snapTo(o.start + dx, ev), Math.max(0, o.start - o.off), o.start + o.dur - .05); c.off = o.off + (s - o.start); c.dur = o.dur - (s - o.start); c.start = s; }
+      else if (edge === 'r') { const end = clamp(this.snapTo(o.start + o.dur + dx, ev), o.start + .05, o.start + (buf ? buf.duration - o.off : o.dur)); c.dur = end - o.start; }
+      else {
+        c.start = this.snapTo(Math.max(0, o.start + dx), ev);
+        const under = document.elementFromPoint(ev.clientX, ev.clientY), row = under && under.closest && under.closest('.tl-row:not(.top)'), t = row && this.track(row.dataset.id);
+        if (t && t.type === 'audio' && t !== home) { const lane = $('.tl-lane', row); if (lane) { lane.append(el); home = t; } }
+      }
+      el.style.left = c.start * this.pps + 'px'; el.style.width = Math.max(2, c.dur * this.pps) + 'px';
+    };
+    const up = ev => {
+      removeEventListener('mousemove', mv); removeEventListener('mouseup', up); el.classList.remove('drag');
+      if (!moved) { this.undo.pop(); this.sel = tr.id; this.clipSel = c.id; this.range = null; this.cursor = clamp(this.timeAt(ev, lane0), c.start, c.start + c.dur); if (!Player.playing) Player.pos = this.cursor; return this.draw(); }
+      if (home !== tr) { tr.clips = tr.clips.filter(k => k !== c); home.clips.push(c); }
+      this.sel = home.id; this.clipSel = c.id; this.range = null; this.fit(); this.changed(); Player.refresh(); this.draw();
+    };
     addEventListener('mousemove', mv); addEventListener('mouseup', up);
   },
   drawEditor() {
     const tr = this.track(this.sel);
-    if (!tr || tr.type === 'audio') return this.editor.replaceChildren(h('div', { class: 'mu-hint' }, tr ? 'Drag across the waveform to select a range, click to place the cursor, and drag a clip by its name strip to move it. The Edit and Effects buttons act on the selection.' : 'Select a drums, bass, chords or melody track to edit its riff here. Click the bars in its lane to choose where it plays. In a note grid, Shift-click adds a whole chord.'));
+    if (!tr || tr.type === 'audio') return this.editor.replaceChildren(h('div', { class: 'mu-hint' }, tr ? 'Drag a clip to move it, also onto another audio track, and drag its ends to trim it. Shift-drag across the waveform to select part of it; the Edit and Effects buttons act on that, or on the clicked clip. Drop sound files from your computer anywhere on the timeline.' : 'Select a drums, bass, chords or melody track to edit its riff here. Click the bars in its lane to choose where it plays. In a note grid, Shift-click adds a whole chord.'));
     this.editor.replaceChildren(h('div', { class: 'mu-ed-head', style: { '--c': ROLES[tr.role].color } }, h('i', { class: 'mu-dot' }), h('b', {}, tr.name), h('span', { class: 'dim' }, `riff of ${tr.len} bar${tr.len > 1 ? 's' : ''}, repeating`)), this.grid(tr, true).el);
     this.editor.firstChild.style.setProperty('--c', ROLES[tr.role].color);
   },

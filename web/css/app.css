@@ -408,3 +408,7 @@ body[data-module=video] { --gold: #ffb020; --gold2: #ffcd6b; --onacc: #2b1a00; -
 .mi:focus { background: var(--sel); color: var(--hi); } .mb:focus-visible { outline-offset: -2px; } .vd-clip:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .cell:is(.sel, .act) .dim { color: var(--text); }
+.tl-clip { cursor: grab; } .tl-clip.drag { cursor: grabbing; z-index: 3; box-shadow: 0 6px 18px var(--shadow); opacity: .92; } .tl-grip { cursor: inherit; pointer-events: none; }
+.tl-edge { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 2; } .tl-edge.l { left: 0; } .tl-edge.r { right: 0; } .tl-clip:hover .tl-edge { background: color-mix(in srgb, var(--gold) 45%, transparent); }
+.tl-drop { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--gold); z-index: 6; pointer-events: none; } .tl-drop span { position: absolute; top: 28px; left: 6px; white-space: nowrap; padding: 3px 8px; border-radius: 6px; background: var(--gold); color: var(--onacc); font-size: 11.5px; font-weight: 800; }
+.tl-row.drop .tl-lane { background: color-mix(in srgb, var(--gold) 12%, transparent); }
