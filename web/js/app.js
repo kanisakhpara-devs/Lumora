@@ -11,7 +11,7 @@ const Keymap = {
     const map = App.conf('keymap', {}); for (const c of Object.values(App.commands)) c.key = map[c.id] ?? this.defaults[c.id];
   },
   async edit() {
-    const map = { ...App.conf('keymap', {}) }, cmds = Object.values(App.commands).filter(c => !/^(kwset|rate|music|pdf)\./.test(c.id)).sort((a, b) => a.label.localeCompare(b.label));
+    const map = { ...App.conf('keymap', {}) }, cmds = Object.values(App.commands).filter(c => !/^(kwset|rate|music|pdf|image)\./.test(c.id)).sort((a, b) => a.label.localeCompare(b.label));
     const rows = cmds.map(c => { const inp = h('input', { type: 'text', class: 'km-key', readOnly: true, value: map[c.id] ?? this.defaults[c.id], placeholder: 'none', onkeydown: e => { e.preventDefault(); e.stopPropagation(); if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return; inp.value = e.key === 'Backspace' || e.key === 'Delete' ? '' : App.keyName(e); map[c.id] = inp.value; } }); return h('tr', {}, h('td', {}, c.label.replace(/\u2026$/, '')), h('td', {}, inp)); });
     const ok = await UI.dialog({ title: 'Customize Shortcuts', width: 560, body: h('div', {}, h('div', { class: 'fnote' }, 'Click a box and press the keys you want. Backspace clears it.'), h('div', { class: 'scroll' }, h('table', { class: 'tbl' }, rows))), buttons: [['Reset All', 'reset'], ['Cancel', null], ['Save', true, 'primary']] });
     if (!ok) return;
@@ -89,6 +89,21 @@ function registerCommands() {
   P('rotl', 'Rotate Left', '', () => Pdf.rotate(-90)); P('rotr', 'Rotate Right', '', () => Pdf.rotate(90)); P('dup', 'Duplicate Page', 'Ctrl+D', () => Pdf.duplicate()); P('delpage', 'Delete Page', '', () => Pdf.removePages()); P('blank', 'Insert Blank Page', '', () => Pdf.blank());
   P('extract', 'Extract Pages…', '', () => Pdf.saveAs(Pdf.targets())); P('numbers', 'Page Numbers…', '', () => Pdf.numbers()); P('watermark', 'Watermark…', '', () => Pdf.watermark()); P('password', 'Password…', '', () => Pdf.protect()); P('props', 'Properties…', '', () => Pdf.props());
   P('edit', 'Edit View', '', () => Pdf.setView('edit')); P('pages', 'Pages View', '', () => Pdf.setView('pages')); P('zin', 'Zoom In', 'Ctrl+=', () => Pdf.zoomBy(1.2)); P('zout', 'Zoom Out', 'Ctrl+-', () => Pdf.zoomBy(1 / 1.2)); P('zfit', 'Fit Page to Window', 'Ctrl+0', () => Pdf.setZoom('fit'));
+  const I = (id, label, key, fn, needDoc = true) => C('image.' + id, label, key, () => { if (App.module !== 'image') return; if (needDoc && !ImgEd.doc) return UI.toast('Open or create a picture first.'); return fn(); }, { modules: ['image'] });
+  I('new', 'New Picture…', 'Ctrl+N', () => ImgEd.newDoc(), false); I('open', 'Open…', 'Ctrl+O', () => ImgEd.open(), false); I('fromphoto', 'Edit the Selected Photo', '', () => ImgEd.fromPhoto(App.cur()), false); I('place', 'Place Picture as Layer…', '', () => ImgEd.pickFiles().then(f => f.length && ImgEd.place(f)));
+  I('save', 'Save Project', 'Ctrl+S', () => ImgEd.save()); I('saveas', 'Save Project As…', 'Ctrl+Shift+S', () => ImgEd.saveAs()); I('export', 'Export Picture…', 'Ctrl+Shift+E', () => ImgEd.exportPic()); I('close', 'Close Picture', '', () => ImgEd.close());
+  I('undo', 'Undo', 'Ctrl+Z', () => ImgEd.step(ImgEd.undo, ImgEd.redo)); I('redo', 'Redo', 'Ctrl+Y', () => ImgEd.step(ImgEd.redo, ImgEd.undo)); I('cut', 'Cut', 'Ctrl+X', () => ImgEd.copy(true)); I('copy', 'Copy', 'Ctrl+C', () => ImgEd.copy()); I('copymerged', 'Copy Merged', '', () => ImgEd.copy(false, true)); I('paste', 'Paste', 'Ctrl+V', () => ImgEd.paste(), false);
+  I('fill', 'Fill with Colour', 'Alt+Backspace', () => ImgEd.fillSel()); I('clear', 'Delete', 'Delete', () => ImgEd.del()); I('transform', 'Free Transform', 'Ctrl+T', () => ImgEd.startTransform()); I('fliplh', 'Flip Layer Horizontal', '', () => ImgEd.flipLayer(true)); I('fliplv', 'Flip Layer Vertical', '', () => ImgEd.flipLayer(false));
+  I('selall', 'Select All', 'Ctrl+A', () => ImgEd.selectAll()); I('deselect', 'Deselect', 'Ctrl+D', () => ImgEd.deselect()); I('invert', 'Invert Selection', 'Ctrl+Shift+I', () => ImgEd.invertSel()); I('feather', 'Feather…', '', () => ImgEd.feather()); I('sellayer', 'Select Layer Pixels', '', () => ImgEd.layerToSel());
+  I('newlayer', 'New Layer', 'Ctrl+Shift+N', () => ImgEd.newLayer()); I('duplayer', 'Duplicate Layer', '', () => ImgEd.dupLayer()); I('dellayer', 'Delete Layer', '', () => ImgEd.delLayer()); I('layercopy', 'Layer via Copy', 'Ctrl+J', () => ImgEd.layerViaCopy()); I('layercut', 'Layer via Cut', 'Ctrl+Shift+J', () => ImgEd.layerViaCopy(true));
+  I('mergedown', 'Merge Down', 'Ctrl+E', () => ImgEd.mergeDown()); I('mergevis', 'Merge Visible', '', () => ImgEd.flatten(true)); I('flatten', 'Flatten Image', '', () => ImgEd.flatten()); I('rasterize', 'Turn Layer Into Pixels', '', () => ImgEd.pixels(ImgEd.L, 'paint on'));
+  I('imgsize', 'Image Size…', '', () => ImgEd.imageSize()); I('canvas', 'Canvas Size…', '', () => ImgEd.canvasSize()); I('rotr', 'Rotate 90° Right', '', () => ImgEd.rotateDoc(90)); I('rotl', 'Rotate 90° Left', '', () => ImgEd.rotateDoc(-90)); I('rot180', 'Rotate 180°', '', () => ImgEd.rotateDoc(180));
+  I('fliph', 'Flip Horizontal', '', () => ImgEd.flipDoc(true)); I('flipv', 'Flip Vertical', '', () => ImgEd.flipDoc(false)); I('cropsel', 'Crop to Selection', '', () => ImgEd.cropToSel()); I('trim', 'Trim Empty Edges', '', () => ImgEd.trimTransparent());
+  I('bc', 'Brightness / Contrast…', '', () => ImgEd.brightness()); I('levels', 'Levels…', 'Ctrl+L', () => ImgEd.levels()); I('curves', 'Curves…', 'Ctrl+M', () => ImgEd.curves()); I('hsl', 'Hue / Saturation…', 'Ctrl+U', () => ImgEd.hsl()); I('balance', 'Colour Balance…', '', () => ImgEd.colorBalance());
+  I('auto', 'Auto Tone', '', () => ImgEd.autoTone()); I('bw', 'Black & White', '', () => ImgEd.desaturate()); I('invertc', 'Invert Colours', 'Ctrl+I', () => ImgEd.invertColours()); I('posterize', 'Posterize…', '', () => ImgEd.posterize()); I('threshold', 'Threshold…', '', () => ImgEd.threshold());
+  I('blur', 'Blur…', '', () => ImgEd.blur()); I('sharpen', 'Sharpen…', '', () => ImgEd.sharpen()); I('noise', 'Add Noise…', '', () => ImgEd.noise()); I('pixelate', 'Pixelate…', '', () => ImgEd.pixelate());
+  I('zin', 'Zoom In', 'Ctrl+=', () => ImgEd.zoomBy(1.25)); I('zout', 'Zoom Out', 'Ctrl+-', () => ImgEd.zoomBy(.8)); I('zfit', 'Fit on Screen', 'Ctrl+0', () => ImgEd.setZoom('fit')); I('z100', 'Actual Pixels', 'Ctrl+1', () => ImgEd.setZoom(1));
+  C('photo.imageedit', 'Edit in Image Editor', '', () => ImgEd.fromPhoto(App.cur()));
   C('help.tour', 'Take the Tour', '', () => Tour.start());
   C('help.about', 'About Opia', '', () => UI.alert('About Opia', `Opia ${App.boot.version}\nA local-first photo organizer and editor.\n\nCatalog: ${App.info.path}\nRAW support: ${App.boot.raw ? 'yes (LibRaw)' : 'not installed'}   Face models: ${App.boot.faces ? 'installed' : 'missing'}\nEverything runs on this computer; map tiles are the only thing fetched from the internet.`));
 }
@@ -112,10 +127,28 @@ function buildMenus() {
     ['View', () => [...looks, 'pdf.edit', 'pdf.pages', '-', 'pdf.zin', 'pdf.zout', 'pdf.zfit', '-', 'view.full']],
     ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
+  if (App.module === 'image') return App.buildMenus(Modes.beginner ? [
+    ['File', ['image.new', 'image.open', 'image.fromphoto', '-', 'image.save', 'image.export', '-', 'image.close', 'file.prefs']],
+    ['Edit', ['image.undo', 'image.redo', '-', 'image.cut', 'image.copy', 'image.paste', 'image.clear', 'image.fill', '-', 'image.transform']],
+    ['Image', ['image.imgsize', 'image.rotr', 'image.rotl', 'image.cropsel', '-', 'image.bc', 'image.hsl', 'image.auto', 'image.bw', '-', 'image.blur', 'image.sharpen']],
+    ['Layer', ['image.newlayer', 'image.duplayer', 'image.dellayer', '-', 'image.layercopy', 'image.mergedown']],
+    ['Select', ['image.selall', 'image.deselect', 'image.invert']],
+    ['View', () => [...looks, 'image.zin', 'image.zout', 'image.zfit', '-', 'view.full']],
+    ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
+  ] : [
+    ['File', ['image.new', 'image.open', 'image.fromphoto', 'image.place', '-', 'image.save', 'image.saveas', 'image.export', '-', 'image.close', 'file.prefs']],
+    ['Edit', ['image.undo', 'image.redo', '-', 'image.cut', 'image.copy', 'image.copymerged', 'image.paste', 'image.clear', 'image.fill', '-', 'image.transform', 'image.fliplh', 'image.fliplv']],
+    ['Image', [{ label: 'Adjustments', sub: () => ['image.bc', 'image.levels', 'image.curves', 'image.hsl', 'image.balance', '-', 'image.auto', 'image.bw', 'image.invertc', 'image.posterize', 'image.threshold'].map(menuItem) }, '-', 'image.imgsize', 'image.canvas', { label: 'Rotate', sub: () => ['image.rotr', 'image.rotl', 'image.rot180', '-', 'image.fliph', 'image.flipv'].map(menuItem) }, 'image.cropsel', 'image.trim']],
+    ['Layer', ['image.newlayer', 'image.duplayer', 'image.dellayer', '-', 'image.layercopy', 'image.layercut', '-', 'image.rasterize', 'image.mergedown', 'image.mergevis', 'image.flatten']],
+    ['Select', ['image.selall', 'image.deselect', 'image.invert', '-', 'image.feather', 'image.sellayer']],
+    ['Filter', ['image.blur', 'image.sharpen', 'image.noise', 'image.pixelate']],
+    ['View', () => [...looks, 'image.zin', 'image.zout', 'image.zfit', 'image.z100', '-', 'view.full']],
+    ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
+  ]);
   if (Modes.beginner) return App.buildMenus([   // the short menus; Advanced has everything
     ['File', ['file.import', 'file.export', '-', 'file.prefs']],
     ['Edit', ['dev.undo', 'dev.redo', '-', 'edit.selectall', 'edit.selectnone']],
-    ['Photo', ['flag.pick', 'flag.none', 'flag.reject', rating, '-', 'photo.rotl', 'photo.rotr', '-', 'dev.auto', 'dev.reset', '-', 'photo.sharpest', 'photo.duplicates', '-', 'col.new', 'photo.remove']],
+    ['Photo', ['flag.pick', 'flag.none', 'flag.reject', rating, '-', 'photo.rotl', 'photo.rotr', '-', 'dev.auto', 'dev.reset', 'photo.imageedit', '-', 'photo.sharpest', 'photo.duplicates', '-', 'col.new', 'photo.remove']],
     ['View', () => [...looks, 'view.grid', 'view.loupe', 'go.develop', '-', 'view.full']],
     ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
@@ -126,7 +159,7 @@ function buildMenus() {
     ['Photo', () => ['photo.vcopy', '-', 'flag.pick', 'flag.none', 'flag.reject', rating,
       { label: 'Set Color Label', sub: [...Object.keys(LABELS).map(l => ({ label: l[0].toUpperCase() + l.slice(1), run: () => App.rate({ label: l }) })), { label: 'None', run: () => App.rate({ label: '' }) }] }, 'rate.auto', '-',
       'stack.group', 'stack.ungroup', 'stack.toggle', 'stack.auto', '-', 'photo.rotl', 'photo.rotr', 'photo.fliph', 'photo.flipv', '-',
-      { label: 'Edit In', sub: () => [...App.conf('editors', []).map(ed => ({ label: ed.name, run: () => Ext.editIn(ed) })), { label: 'Configure External Editors…', run: () => App.run('prefs.editors') }] }, { label: 'Photo Merge', sub: [{ label: 'Panorama…', key: 'Ctrl+M', run: () => App.run('merge.pano') }, { label: 'HDR…', key: 'Ctrl+H', run: () => App.run('merge.hdr') }, { label: 'Focus Stack…', run: () => App.run('merge.focus') }] }, '-', 'photo.explorer', 'photo.remove']],
+      'photo.imageedit', { label: 'Edit In', sub: () => [...App.conf('editors', []).map(ed => ({ label: ed.name, run: () => Ext.editIn(ed) })), { label: 'Configure External Editors…', run: () => App.run('prefs.editors') }] }, { label: 'Photo Merge', sub: [{ label: 'Panorama…', key: 'Ctrl+M', run: () => App.run('merge.pano') }, { label: 'HDR…', key: 'Ctrl+H', run: () => App.run('merge.hdr') }, { label: 'Focus Stack…', run: () => App.run('merge.focus') }] }, '-', 'photo.explorer', 'photo.remove']],
     ['Develop', ['dev.copy', 'dev.paste', 'dev.sync', 'dev.auto', 'dev.reset', '-', 'dev.snapshot', 'dev.preset', '-', 'dev.before', 'dev.reference', 'dev.proof', '-', 'tool.crop', 'tool.spot', 'tool.redeye', 'tool.brush', 'tool.linear', 'tool.radial', 'tool.guided']],
     ['Metadata', ['meta.kwnew', 'edit.keywordsets', '-', 'meta.sync', 'edit.metapresets', '-', 'meta.xmpwrite', 'meta.xmpread', 'meta.exif']],
     ['View', () => [...looks, 'view.grid', 'view.loupe', 'view.compare', 'view.survey', 'view.people', '-', 'view.info', 'view.panels', 'view.film', 'view.full']],
@@ -134,6 +167,9 @@ function buildMenus() {
     ['Help', ['help.tour', 'help.keys', 'help.keymap', 'help.about']],
   ]);
 }
+
+/* a command as a menu entry, for submenus built on the fly */
+function menuItem(id) { if (id === '-') return id; const c = App.commands[id]; return c && { label: c.label, key: c.key, run: () => App.run(id) }; }
 
 function looksMenu(kind) {
   const themes = Object.entries(THEMES).map(([k, n]) => ({ label: n, checked: Theme.cur === k, run: () => Theme.set(k) }));
@@ -151,9 +187,11 @@ async function start() {
     new MutationObserver(() => $('#brand').classList.toggle('busy', $('#activity').children.length > 0)).observe($('#activity'), { childList: true });
     $('#identity').replaceChildren(Identity.el()); $('#identity').ondblclick = () => Identity.edit(); $('#identity').title = 'Double-click to customise the identity plate';
     const pick = $('#modpick'); for (const m of MODULES) { App.addModule(m); pick.append(h('a', { data: { m: m.id }, onclick: () => App.show(m.id) }, m.name)); }
-    App.addModule(Music); App.addModule(Pdf);
-    const own = id => id === 'music' || id === 'pdf';
-    const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg' }, h('a', { class: !own(App.module) ? 'on' : '', title: 'Organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Photos'), h('a', { class: App.module === 'music' ? 'on' : '', title: 'Make and edit music', onclick: () => App.show('music') }, 'Music'), h('a', { class: App.module === 'pdf' ? 'on' : '', title: 'Read, sign, mark up and rearrange PDFs', onclick: () => App.show('pdf') }, 'PDF')));
+    App.addModule(Music); App.addModule(Pdf); App.addModule(ImgEd);
+    const WORKSPACES = [['image', 'Image', 'Paint, combine pictures in layers, add text, fix colours'], ['music', 'Music', 'Make and edit music'], ['pdf', 'PDF', 'Read, sign, mark up and rearrange PDFs']];
+    const own = id => WORKSPACES.some(w => w[0] === id);
+    const apps = () => $('#apps').replaceChildren(h('span', { class: 'seg' }, h('a', { class: !own(App.module) ? 'on' : '', title: 'Organise and edit photos', onclick: () => App.show(App.lastPhoto || 'library') }, 'Photos'),
+      WORKSPACES.map(([id, label, tip]) => h('a', { class: App.module === id ? 'on' : '', title: tip, onclick: () => App.show(id) }, label))));
     App.on('module', id => { if (!own(id)) App.lastPhoto = id; apps(); buildMenus(); dispatchEvent(new Event('resize')); });
     Dev.el = UI.shell('develop'); Dev.init(Dev.el); GLR.init(Dev.cv);
     Film.init();

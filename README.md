@@ -3,9 +3,22 @@
 A local photo organizer and editor: Library, Develop, Map, Book, Slideshow, Print and Web modules.
 A Python engine handles the disk, catalogs, colour management and export; the interface renders every edit on the GPU (WebGL 2).
 
-## Three workspaces
+## Four workspaces
 
-**Photos** is the organizer and editor described below. **Music** and **PDF** sit beside it on the switch next to the logo.
+**Photos** is the organizer and editor described below. **Image**, **Music** and **PDF** sit beside it on the switch next to the logo.
+
+**Image** is a layered picture editor, in the spirit of Photoshop:
+
+- Layers: add, duplicate, delete, reorder by dragging, hide, opacity, 16 blend modes, merge down, merge visible, flatten.
+- Tools: move, rectangle / oval / lasso selections and a magic wand (Shift adds, Alt takes away), brush and eraser (size, hardness, opacity, pen pressure), fill bucket, gradient, eyedropper, text, shapes (rectangle, rounded rectangle, oval, line, arrow), crop, hand.
+- Selections: fill, delete, copy, cut, paste, copy merged, layer via copy / cut, invert, feather, crop to selection.
+- Free Transform (Ctrl+T): resize, turn and move a layer with handles. Text and shape layers stay editable after transforming.
+- Image: image size, canvas size, rotate, flip, trim empty edges.
+- Adjustments with a live preview, inside the selection if there is one: brightness / contrast, levels, curves, hue / saturation (with colorize), colour balance, auto tone, black & white, invert, posterize, threshold. Filters: blur, sharpen, add noise, pixelate.
+- Opens PNG, JPEG, WebP, GIF, BMP, TIFF, HEIC and RAW files, and pictures pasted from the clipboard. Exports PNG, JPEG, WebP or TIFF, optionally straight into the Photos catalog. Projects (`.opiaimg`, a zip with one PNG per layer and a JSON description) keep the layers and editable text.
+- In Photos, *Photo > Edit in Image Editor* opens the selected photo with its Develop edits applied.
+
+Editing is 8 bits per channel in sRGB, in the browser engine, so very large pictures (well over 100 megapixels) are slow. There are no layer masks, adjustment layers, layer styles, smart objects, healing or clone brushes, or PSD support; adjustments and filters change the layer's pixels (undo takes them back).
 
 **Music** is a small studio:
 
