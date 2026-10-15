@@ -3,6 +3,12 @@
 Every change to Opia is listed here, newest first, with what was tested and what was not.
 Work done in a cloud session (no access to the Windows PC) says so: those changes were tested in headless Chromium on Linux, not in the packaged `Opia.exe` window.
 
+## Website: the privacy stamp reads properly (cloud session, 2026-10-15)
+
+**Fixed** the "KEPT ON THIS COMPUTER" stamp. The phrase was too long for the ring, so the second copy was cut off after "KEPT ON THIS C" and the first copy started straight after it, which looked like a mistake. A small script in `docs/site.js` now measures the phrase once the font has loaded, and after each language switch, and sizes and spaces it so exactly two copies go once around the ring. The Spanish phrase is longer, so its letters come out smaller. The join between the two copies now has the same "·" and spacing as the middle.
+
+**Tested** (headless Chromium): the stamp in light/English and in dark/Spanish. In both, the text measures 465 units against a ring of 465. axe still finds no violations, and there are no script errors. **Not tested**: Safari or Firefox. Without JavaScript the old cut-off version still shows.
+
 ## Website redesign: the light table (cloud session, 2026-10-15)
 
 **Changed** `docs/index.html`, `docs/site.css` and `docs/site.js`, rewritten from scratch so the site no longer looks like a template. It is now laid out like a desk covered in your own work:

@@ -32,7 +32,7 @@ const ES = {
   'b4.t': 'Cómoda con el teclado.', 'b4.p': 'Todos los botones con Tab, menús con F10 y atajos que puedes cambiar.',
   'b5.t': 'Modo panel táctil.', 'b5.p': 'Dos dedos desplazan, al pellizcar se hace zoom, los controles crecen.',
   'b6.t': 'Complementos.', 'b6.p': 'Añade tus propios comandos en Python.',
-  'st.ring': 'SE QUEDA EN ESTE ORDENADOR · SE QUEDA EN ESTE ORDENADOR ·',
+  'st.ring': 'SE QUEDA EN ESTE ORDENADOR · SE QUEDA EN ESTE ORDENADOR · ',
   'p.k': 'Privada desde el diseño', 'p.h': 'Tus archivos nunca salen de tu mesa.',
   'p.p': 'Opia no tiene cuenta ni nube. Fotos, canciones, vídeos y documentos se quedan en tus carpetas, y los originales nunca cambian. Solo se conecta para los mosaicos del mapa y para las subidas FTP que tú inicies.',
   'p.m': 'sin registro · sin suscripción · sin conexión',
@@ -64,8 +64,19 @@ function setLang(lang) {
   html.lang = lang;
   $$('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
   document.title = lang === 'es' ? 'Opia: crea cosas, que sigan siendo tuyas' : 'Opia: make things, keep them yours';
-  store.set('opia-site-lang', lang); themeLabel();
+  store.set('opia-site-lang', lang); themeLabel(); fitRing();
 }
+
+/* ---- the stamp: stretch or shrink the phrase so its two copies go exactly once round the ring */
+function fitRing() {
+  const tp = $('.stamp textPath'); if (!tp) return;
+  const t = tp.parentNode, C = 2 * Math.PI * 74, n = tp.textContent.length;
+  t.style.fontSize = '15.5px'; t.style.letterSpacing = '0px';
+  const L = tp.getComputedTextLength(); if (!L) return;
+  if (L > C * .8) t.style.fontSize = (15.5 * C * .8 / L) + 'px';     // too long (Spanish): smaller letters, keep some spacing
+  t.style.letterSpacing = ((C - tp.getComputedTextLength()) / n) + 'px';
+}
+if (document.fonts) document.fonts.ready.then(fitRing);
 $$('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
 
 /* ---- theme: paper (light) unless the visitor switched to the night desk before */

@@ -108,7 +108,7 @@ h2 { font-size: clamp(36px, 4.6vw, 62px); }
 [data-theme=dark] .stamp { color: #8fa0ff; }
 .stamp svg { width: 100%; height: auto; overflow: visible; mask: radial-gradient(circle at 30% 30%, #000 60%, rgba(0,0,0,.75)); }
 .stamp circle { fill: none; stroke: currentColor; } .stamp .s1 { stroke-width: 6; } .stamp .s2 { stroke-width: 3; } .stamp .s3 { stroke-width: 7; } .stamp .s4 { fill: currentColor; stroke: none; }
-.stamp text { font: 900 15.5px Nunito, sans-serif; letter-spacing: .2em; fill: currentColor; }
+.stamp text { font: 900 15.5px Nunito, sans-serif; letter-spacing: .2em; white-space: pre; fill: currentColor; }
 .private h2 { margin-bottom: 18px; }
 .private .words > p:not(.margin) { font-size: 19px; color: var(--soft); }
 
